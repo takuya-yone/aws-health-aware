@@ -359,6 +359,20 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
     ddb_table = os.environ['DYNAMODB_TABLE']
     aha_ddb_table = dynamodb.Table(ddb_table)
     event_latestDescription = event_details['successfulSet'][0]['eventDescription']['latestDescription']
+    
+    event_latestDescription_split = event_latestDescription.split('\n\n')
+    event_latestDescription_ja_list = []
+    translate_client = get_sts_token('translate')
+    for text in event_latestDescription_split:
+
+        response = translate_client.translate_text(
+            Text= text,
+            SourceLanguageCode='en',
+            TargetLanguageCode='ja'
+        )
+        event_latestDescription_ja_list.append(response.get('TranslatedText'))
+    event_latestDescription_ja = '\n\n'.join(event_latestDescription_ja_list)
+    
     # set time parameters
     delta_hours = os.environ['EVENT_SEARCH_BACK']
     delta_hours = int(delta_hours)
@@ -384,16 +398,20 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
             print(datetime.now().strftime(srt_ddb_format_full) + ": record not found")
             # write to dynamodb
             response = aha_ddb_table.put_item(
-                Item={
-                    'arn': event_arn,
-                    'lastUpdatedTime': str_update,
-                    'added': sec_now,
-                    'ttl': int(sec_now) + delta_hours_sec + 86400,
-                    'statusCode': status_code,
-                    'affectedAccountIDs': affected_org_accounts,
-                    'latestDescription': event_latestDescription
-                    # Cleanup: DynamoDB entry deleted 24 hours after last update
-                }
+                    Item={
+                        'arn': event_arn,
+                        'lastUpdatedTime': str_update,
+                        'added': sec_now,
+                        'ttl': int(sec_now) + delta_hours_sec + 86400,
+                        'statusCode': status_code,
+                        'affectedAccountIDs': affected_org_accounts,
+                        'affectedOrgEntities': affected_org_entities,
+                        'latestDescription': event_latestDescription,
+                        'latestDescription(JA)': event_latestDescription_ja,
+                        'Service': event_details['successfulSet'][0]['event']['service'],
+                        'Region': event_details['successfulSet'][0]['event']['region'],
+                        'Status': event_details['successfulSet'][0]['event']['statusCode']
+                    }
             )
             affected_org_accounts_details = [
                     f"{get_account_name(account_id)} ({account_id})" for account_id in affected_org_accounts]            
@@ -418,8 +436,12 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                         'ttl': int(sec_now) + delta_hours_sec + 86400,
                         'statusCode': status_code,
                         'affectedAccountIDs': affected_org_accounts,
-                        'latestDescription': event_latestDescription
-                        # Cleanup: DynamoDB entry deleted 24 hours after last update
+                        'affectedOrgEntities': affected_org_entities,
+                        'latestDescription': event_latestDescription,
+                        'latestDescription(JA)': event_latestDescription_ja,
+                        'Service': event_details['successfulSet'][0]['event']['service'],
+                        'Region': event_details['successfulSet'][0]['event']['region'],
+                        'Status': event_details['successfulSet'][0]['event']['statusCode']
                     }
                 )
                 affected_org_accounts_details = [
@@ -440,6 +462,16 @@ def update_ddb(event_arn, str_update, status_code, event_details, affected_accou
     ddb_table = os.environ['DYNAMODB_TABLE']
     aha_ddb_table = dynamodb.Table(ddb_table)
     event_latestDescription = event_details['successfulSet'][0]['eventDescription']['latestDescription']
+
+    # translate_client = get_sts_token('translate')
+    # response = translate_client.translate_text(
+    #     Text= event_latestDescription ,
+    #     SourceLanguageCode='en',
+    #     TargetLanguageCode='ja'
+    # )
+    # event_latestDescription_ja = response.get('TranslatedText')  
+
+
 
     # set time parameters
     delta_hours = os.environ['EVENT_SEARCH_BACK']
@@ -466,16 +498,20 @@ def update_ddb(event_arn, str_update, status_code, event_details, affected_accou
             print(datetime.now().strftime(srt_ddb_format_full) + ": record not found")
             # write to dynamodb
             response = aha_ddb_table.put_item(
-                Item={
-                    'arn': event_arn,
-                    'lastUpdatedTime': str_update,
-                    'added': sec_now,
-                    'ttl': int(sec_now) + delta_hours_sec + 86400,
-                    'statusCode': status_code,
-                    'affectedAccountIDs': affected_accounts,
-                    'latestDescription': event_latestDescription
-                    # Cleanup: DynamoDB entry deleted 24 hours after last update
-                }
+                    Item={
+                        'arn': event_arn,
+                        'lastUpdatedTime': str_update,
+                        'added': sec_now,
+                        'ttl': int(sec_now) + delta_hours_sec + 86400,
+                        'statusCode': status_code,
+                        'affectedAccountIDs': affected_org_accounts,
+                        'affectedOrgEntities': affected_org_entities,
+                        'latestDescription': event_latestDescription,
+                        # 'latestDescription(JA)': event_latestDescription_ja,
+                        'Service': event_details['successfulSet'][0]['event']['service'],
+                        'Region': event_details['successfulSet'][0]['event']['region'],
+                        'Status': event_details['successfulSet'][0]['event']['statusCode']
+                    }
             )
             affected_accounts_details = [
                     f"{get_account_name(account_id)} ({account_id})" for account_id in affected_accounts]
@@ -498,9 +534,13 @@ def update_ddb(event_arn, str_update, status_code, event_details, affected_accou
                         'added': sec_now,
                         'ttl': int(sec_now) + delta_hours_sec + 86400,
                         'statusCode': status_code,
-                        'affectedAccountIDs': affected_accounts,
-                        'latestDescription': event_latestDescription
-                        # Cleanup: DynamoDB entry deleted 24 hours after last update
+                        'affectedAccountIDs': affected_org_accounts,
+                        'affectedOrgEntities': affected_org_entities,
+                        'latestDescription': event_latestDescription,
+                        # 'latestDescription(JA)': event_latestDescription_ja,
+                        'Service': event_details['successfulSet'][0]['event']['service'],
+                        'Region': event_details['successfulSet'][0]['event']['region'],
+                        'Status': event_details['successfulSet'][0]['event']['statusCode']
                     }
                 )
                 affected_accounts_details = [
@@ -624,70 +664,6 @@ def get_secrets():
         #print("Secrets: ",secrets)   
     return secrets
 
-
-def describe_events(health_client):
-    str_ddb_format_sec = '%s'
-    # set hours to search back in time for events
-    delta_hours = os.environ['EVENT_SEARCH_BACK']
-    health_event_type = os.environ['HEALTH_EVENT_TYPE']
-    delta_hours = int(delta_hours)
-    time_delta = (datetime.now() - timedelta(hours=delta_hours))
-    print("Searching for events and updates made after: ", time_delta)
-    dict_regions = os.environ['REGIONS']
-
-    str_filter = {
-        'lastUpdatedTimes': [
-            {
-                'from': time_delta
-            }
-        ]    
-    }
-
-    if health_event_type == "issue":
-        event_type_filter = {'eventTypeCategories': ['issue','investigation']}
-        print("AHA will be monitoring events with event type categories as 'issue' only!")
-        str_filter.update(event_type_filter)
-
-    if dict_regions != "all regions":
-        dict_regions = [region.strip() for region in dict_regions.split(',')]
-        print("AHA will monitor for events only in the selected regions: ", dict_regions)
-        region_filter = {'regions': dict_regions}
-        str_filter.update(region_filter)
-
-    event_paginator = health_client.get_paginator('describe_events')
-    event_page_iterator = event_paginator.paginate(filter=str_filter)
-    for response in event_page_iterator:
-        events = response.get('events', [])
-        aws_events = json.dumps(events, default=myconverter)
-        aws_events = json.loads(aws_events)
-        print('Event(s) Received: ', json.dumps(aws_events))
-        if len(aws_events) > 0:  # if there are new event(s) from AWS
-            for event in aws_events:
-                event_arn = event['arn']
-                status_code = event['statusCode']
-                str_update = parser.parse((event['lastUpdatedTime']))
-                str_update = str_update.strftime(str_ddb_format_sec)
-
-                # get non-organizational view requirements
-                affected_accounts = get_health_accounts(health_client, event, event_arn)
-                affected_entities = get_health_entities(health_client, event, event_arn)
-
-                # get event details
-                event_details = json.dumps(describe_event_details(health_client, event_arn), default=myconverter)
-                event_details = json.loads(event_details)
-                print("Event Details: ", event_details)
-                if event_details['successfulSet'] == []:
-                    print("An error occured with account:", event_details['failedSet'][0]['awsAccountId'], "due to:",
-                          event_details['failedSet'][0]['errorName'], ":",
-                          event_details['failedSet'][0]['errorMessage'])
-                    continue
-                else:
-                    # write to dynamoDB for persistence
-                    update_ddb(event_arn, str_update, status_code, event_details, affected_accounts, affected_entities)
-        else:
-            print("No events found in time frame, checking again in 1 minute.")
-
-
 def describe_org_events(health_client):
     str_ddb_format_sec = '%s'
     # set hours to search back in time for events
@@ -696,24 +672,13 @@ def describe_org_events(health_client):
     dict_regions = os.environ['REGIONS']
     delta_hours = int(delta_hours)
     time_delta = (datetime.now() - timedelta(hours=delta_hours))
-    print("Searching for events and updates made after: ", time_delta)
+    print("-2- Searching for events and updates made after: ", time_delta)
 
     str_filter = {
         'lastUpdatedTime': {
             'from': time_delta
         }
     }
-
-    if health_event_type == "issue":
-        event_type_filter = {'eventTypeCategories': ['issue','investigation']}
-        print("AHA will be monitoring events with event type categories as 'issue' only!")
-        str_filter.update(event_type_filter)
-
-    if dict_regions != "all regions":
-        dict_regions = [region.strip() for region in dict_regions.split(',')]
-        print("AHA will monitor for events only in the selected regions: ", dict_regions)
-        region_filter = {'regions': dict_regions}
-        str_filter.update(region_filter)
 
     org_event_paginator = health_client.get_paginator('describe_events_for_organization')
     org_event_page_iterator = org_event_paginator.paginate(filter=str_filter)
@@ -752,8 +717,9 @@ def describe_org_events(health_client):
                 # get event details
                 event_details = json.dumps(describe_org_event_details(health_client, event_arn, affected_org_accounts),
                                         default=myconverter)
-                event_details = json.loads(event_details)
                 print("Event Details: ", event_details)
+                event_details = json.loads(event_details)
+
                 if event_details['successfulSet'] == []:
                     print("An error occured with account:", event_details['failedSet'][0]['awsAccountId'], "due to:",
                         event_details['failedSet'][0]['errorName'], ":",
@@ -821,55 +787,21 @@ def get_sts_token(service):
     assumeRoleArn = get_secrets()["ahaassumerole"]
     boto3_client = None
     
-    if "arn:aws:iam::" in assumeRoleArn:
-        ACCESS_KEY = []
-        SECRET_KEY = []
-        SESSION_TOKEN = []
-        
-        sts_connection = boto3.client('sts')
-        
-        ct = datetime.now()
-        role_session_name = "cross_acct_aha_session"
-        
-        acct_b = sts_connection.assume_role(
-          RoleArn=assumeRoleArn,
-          RoleSessionName=role_session_name,
-          DurationSeconds=900,
-        )
-        
-        ACCESS_KEY    = acct_b['Credentials']['AccessKeyId']
-        SECRET_KEY    = acct_b['Credentials']['SecretAccessKey']
-        SESSION_TOKEN = acct_b['Credentials']['SessionToken']
-        
-        # create service client using the assumed role credentials, e.g. S3
-        boto3_client = boto3.client(
-          service,
-          config=config,
-          aws_access_key_id=ACCESS_KEY,
-          aws_secret_access_key=SECRET_KEY,
-          aws_session_token=SESSION_TOKEN,
-        )
-        print("Running in member account deployment mode")
-    else:
-        boto3_client = boto3.client(service, config=config)
-        print("Running in management account deployment mode")
+    boto3_client = boto3.client(service, config=config)
+    print("Running in management account deployment mode")
     
     return boto3_client
 
 def main(event, context):
-    print("THANK YOU FOR CHOOSING AWS HEALTH AWARE!")
+    print(os.environ)
+
+    print("-0- THANK YOU FOR CHOOSING AWS HEALTH AWARE!")
     health_client = get_sts_token('health')
     org_status = os.environ['ORG_STATUS']
     #str_ddb_format_sec = '%s'
 
-    # check for AWS Organizations Status
-    if org_status == "No":
-        print("AWS Organizations is not enabled. Only Service Health Dashboard messages will be alerted.")
-        describe_events(health_client)
-    else:
-        print(
-            "AWS Organizations is enabled. Personal Health Dashboard and Service Health Dashboard messages will be alerted.")
-        describe_org_events(health_client)
+    print("-1- AWS Organizations is enabled. Personal Health Dashboard and Service Health Dashboard messages will be alerted.")
+    describe_org_events(health_client)
 
 if __name__ == "__main__":
     main('', '')
