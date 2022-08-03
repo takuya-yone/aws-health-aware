@@ -18,6 +18,18 @@ from messagegenerator import get_message_for_slack, get_org_message_for_slack, g
     get_message_for_teams, get_org_message_for_teams, get_message_for_email, get_org_message_for_email, \
     get_org_message_for_eventbridge, get_message_for_eventbridge
 
+
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools.utilities.typing import LambdaContext
+from aws_lambda_powertools.utilities.data_classes import APIGatewayProxyEvent
+from aws_lambda_powertools import Tracer
+from aws_lambda_powertools import Metrics
+from aws_lambda_powertools.metrics import MetricUnit
+
+tracer = Tracer()
+logger = Logger()
+
+
 # query active health API endpoint
 health_dns = socket.gethostbyname_ex('global.health.amazonaws.com')
 (current_endpoint, global_endpoint, ip_endpoint) = health_dns
@@ -359,6 +371,20 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
     ddb_table = os.environ['DYNAMODB_TABLE']
     aha_ddb_table = dynamodb.Table(ddb_table)
     event_latestDescription = event_details['successfulSet'][0]['eventDescription']['latestDescription']
+
+    event_latestDescription_split = event_latestDescription.split('\n\n')
+    event_latestDescription_ja_list = []
+    translate_client = get_sts_token('translate')
+    for text in event_latestDescription_split:
+        response = translate_client.translate_text(
+            Text= text,
+            SourceLanguageCode='en',
+            TargetLanguageCode='ja'
+        )
+        event_latestDescription_ja_list.append(response.get('TranslatedText'))
+    event_latestDescription_ja = '\n\n'.join(event_latestDescription_ja_list)
+
+
     # set time parameters
     delta_hours = os.environ['EVENT_SEARCH_BACK']
     delta_hours = int(delta_hours)
@@ -388,11 +414,14 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                     'arn': event_arn,
                     'lastUpdatedTime': str_update,
                     'added': sec_now,
-                    'ttl': int(sec_now) + delta_hours_sec + 86400,
+                    'ttl': int(sec_now) +  86400000,
                     'statusCode': status_code,
                     'affectedAccountIDs': affected_org_accounts,
-                    'latestDescription': event_latestDescription
-                    # Cleanup: DynamoDB entry deleted 24 hours after last update
+                    'affectedOrgEntities': affected_org_entities,
+                    'latestDescription': event_latestDescription,
+                    'latestDescription(JA)': event_latestDescription_ja,
+                    'service': event_details['successfulSet'][0]['event']['service'],
+                    'region': event_details['successfulSet'][0]['event']['region']
                 }
             )
             affected_org_accounts_details = [
@@ -418,8 +447,11 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                         'ttl': int(sec_now) + delta_hours_sec + 86400,
                         'statusCode': status_code,
                         'affectedAccountIDs': affected_org_accounts,
-                        'latestDescription': event_latestDescription
-                        # Cleanup: DynamoDB entry deleted 24 hours after last update
+                        'affectedOrgEntities': affected_org_entities,
+                        'latestDescription': event_latestDescription,
+                        'latestDescription(JA)': event_latestDescription_ja,
+                        'service': event_details['successfulSet'][0]['event']['service'],
+                        'region': event_details['successfulSet'][0]['event']['region']
                     }
                 )
                 affected_org_accounts_details = [
@@ -856,6 +888,8 @@ def get_sts_token(service):
     
     return boto3_client
 
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context(log_event=True)
 def main(event, context):
     print("THANK YOU FOR CHOOSING AWS HEALTH AWARE!")
     health_client = get_sts_token('health')
