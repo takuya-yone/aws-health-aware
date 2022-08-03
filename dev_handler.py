@@ -48,8 +48,8 @@ config = Config(
 )
 
 # Get Account Name
-def get_account_name(account_id):
-    org_client = get_sts_token('organizations')
+def get_account_name(account_id, secrets):
+    org_client = get_sts_token('organizations', secrets)
     try:
         account_name = org_client.describe_account(AccountId=account_id)['Account']['Name']
     except Exception:
@@ -120,13 +120,13 @@ def get_account_name(account_id):
 #             print("Server connection failed: ", e.reason)
 #             pass
 
-def send_org_alert(event_details, affected_org_accounts, affected_org_entities, event_type):
-    slack_url = get_secrets()["slack"]
-    teams_url = get_secrets()["teams"]
-    chime_url = get_secrets()["chime"]
+def send_org_alert(event_details, affected_org_accounts, affected_org_entities, secrets, event_type):
+    slack_url = secrets["slack"]
+    teams_url = secrets["teams"]
+    chime_url = secrets["chime"]
     SENDER = os.environ['FROM_EMAIL']
     RECIPIENT = os.environ['TO_EMAIL']
-    event_bus_name = get_secrets()["eventbusname"]
+    event_bus_name = secrets["eventbusname"]
 
     if "None" not in event_bus_name:
         try:
@@ -365,7 +365,7 @@ def get_health_org_entities(health_client, event, event_arn, affected_org_accoun
 
 
 # For Customers using AWS Organizations
-def update_org_ddb(event_arn, str_update, status_code, event_details, affected_org_accounts, affected_org_entities):
+def update_org_ddb(event_arn, str_update, status_code, event_details, affected_org_accounts, affected_org_entities,secrets):
     # open dynamoDB
     dynamodb = boto3.resource("dynamodb")
     ddb_table = os.environ['DYNAMODB_TABLE']
@@ -374,7 +374,7 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
 
     event_latestDescription_split = event_latestDescription.split('\n\n')
     event_latestDescription_ja_list = []
-    translate_client = get_sts_token('translate')
+    translate_client = get_sts_token('translate',secrets)
     for text in event_latestDescription_split:
         response = translate_client.translate_text(
             Text= text,
@@ -425,12 +425,12 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                 }
             )
             affected_org_accounts_details = [
-                    f"{get_account_name(account_id)} ({account_id})" for account_id in affected_org_accounts]            
+                    f"{get_account_name(account_id,secrets)} ({account_id})" for account_id in affected_org_accounts]            
             # send to configured endpoints
             if status_code != "closed":
-                send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, event_type="create")
+                send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, secrets, event_type="create")
             else:
-                send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, event_type="resolve")
+                send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, secrets, event_type="resolve")
 
         else:
             item = response['Item']
@@ -455,7 +455,7 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                     }
                 )
                 affected_org_accounts_details = [
-                    f"{get_account_name(account_id)} ({account_id})" for account_id in affected_org_accounts]                
+                    f"{get_account_name(account_id,secrets)} ({account_id})" for account_id in affected_org_accounts]                
                 # send to configured endpoints
                 if status_code != "closed":
                     send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, event_type="create")
@@ -510,7 +510,7 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
 #                 }
 #             )
 #             affected_accounts_details = [
-#                     f"{get_account_name(account_id)} ({account_id})" for account_id in affected_accounts]
+#                     f"{get_account_name(account_id,secrets)} ({account_id})" for account_id in affected_accounts]
 #             # send to configured endpoints
 #             if status_code != "closed":
 #                 send_alert(event_details, affected_accounts_details, affected_entities, event_type="create")
@@ -536,7 +536,7 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
 #                     }
 #                 )
 #                 affected_accounts_details = [
-#                     f"{get_account_name(account_id)} ({account_id})" for account_id in affected_accounts]
+#                     f"{get_account_name(account_id,secrets)} ({account_id})" for account_id in affected_accounts]
 #                 # send to configured endpoints
 #                 if status_code != "closed":
 #                     send_alert(event_details, affected_accounts_details, affected_entities, event_type="create")
@@ -720,7 +720,7 @@ def get_secrets():
 #             print("No events found in time frame, checking again in 1 minute.")
 
 
-def describe_org_events(health_client):
+def describe_org_events(health_client,secrets):
     str_ddb_format_sec = '%s'
     # set hours to search back in time for events
     delta_hours = os.environ['EVENT_SEARCH_BACK']
@@ -795,7 +795,7 @@ def describe_org_events(health_client):
                     # write to dynamoDB for persistence
                     if update_org_ddb_flag:
                         update_org_ddb(event_arn, str_update, status_code, event_details, affected_org_accounts,
-                                    affected_org_entities)
+                                    affected_org_entities,secrets)
         else:
             print("No events found in time frame, checking again in 1 minute.")
 
@@ -849,8 +849,8 @@ def getAccountIDs():
     print(account_ids)
     return account_ids
 
-def get_sts_token(service):
-    assumeRoleArn = get_secrets()["ahaassumerole"]
+def get_sts_token(service,secrets):
+    assumeRoleArn = secrets["ahaassumerole"]
     boto3_client = None
     
     if "arn:aws:iam::" in assumeRoleArn:
@@ -892,7 +892,8 @@ def get_sts_token(service):
 @logger.inject_lambda_context(log_event=True)
 def main(event, context):
     print("THANK YOU FOR CHOOSING AWS HEALTH AWARE!")
-    health_client = get_sts_token('health')
+    secrets = get_secrets()
+    health_client = get_sts_token('health',secrets)
     org_status = os.environ['ORG_STATUS']
     #str_ddb_format_sec = '%s'
 
@@ -903,7 +904,7 @@ def main(event, context):
     else:
         print(
             "AWS Organizations is enabled. Personal Health Dashboard and Service Health Dashboard messages will be alerted.")
-        describe_org_events(health_client)
+        describe_org_events(health_client,secrets)
 
 if __name__ == "__main__":
     main('', '')
