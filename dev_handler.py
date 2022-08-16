@@ -458,9 +458,9 @@ def update_org_ddb(event_arn, str_update, status_code, event_details, affected_o
                     f"{get_account_name(account_id,secrets)} ({account_id})" for account_id in affected_org_accounts]                
                 # send to configured endpoints
                 if status_code != "closed":
-                    send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, event_type="create")
+                    send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, secrets, event_type="create")
                 else:
-                    send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, event_type="resolve")
+                    send_org_alert(event_details, affected_org_accounts_details, affected_org_entities, secrets, event_type="resolve")
             else:
                 print("No new updates found, checking again in 1 minute.")
 
