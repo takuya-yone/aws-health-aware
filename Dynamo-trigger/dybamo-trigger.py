@@ -14,6 +14,7 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key, Attr
 
+
 def get_secrets():
     secret_teams_name = "MicrosoftChannelID"
     secret_slack_name = "SlackChannelID"
@@ -25,7 +26,7 @@ def get_secrets():
     get_secret_value_response_teams = ""
     get_secret_value_response_slack = ""
     event_bus_name = "EventBusName"
-    secret_assumerole_name = "AssumeRoleArn" 
+    secret_assumerole_name = "AssumeRoleArn"
 
     # create a Secrets Manager client
     session = boto3.session.Session()
@@ -42,8 +43,8 @@ def get_secrets():
         if e.response['Error']['Code'] == 'AccessDeniedException':
             print("No AWS Secret configured for Teams, skipping")
             teams_channel_id = "None"
-        else: 
-            print("There was an error with the Teams secret: ",e.response)
+        else:
+            print("There was an error with the Teams secret: ", e.response)
             teams_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_teams:
@@ -58,8 +59,8 @@ def get_secrets():
         if e.response['Error']['Code'] == 'AccessDeniedException':
             print("No AWS Secret configured for Slack, skipping")
             slack_channel_id = "None"
-        else:    
-            print("There was an error with the Slack secret: ",e.response)
+        else:
+            print("There was an error with the Slack secret: ", e.response)
             slack_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_slack:
@@ -74,8 +75,8 @@ def get_secrets():
         if e.response['Error']['Code'] == 'AccessDeniedException':
             print("No AWS Secret configured for Chime, skipping")
             chime_channel_id = "None"
-        else:    
-            print("There was an error with the Chime secret: ",e.response)
+        else:
+            print("There was an error with the Chime secret: ", e.response)
             chime_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_chime:
@@ -90,14 +91,14 @@ def get_secrets():
         if e.response['Error']['Code'] == 'AccessDeniedException':
             print("No AWS Secret configured for Assume Role, skipping")
             assumerole_channel_id = "None"
-        else:    
-            print("There was an error with the Assume Role secret: ",e.response)
+        else:
+            print("There was an error with the Assume Role secret: ", e.response)
             assumerole_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_assumerole:
             assumerole_channel_id = get_secret_value_response_assumerole['SecretString']
         else:
-            assumerole_channel_id = "None"    
+            assumerole_channel_id = "None"
     try:
         get_secret_value_response_eventbus = client.get_secret_value(
             SecretId=event_bus_name
@@ -106,23 +107,23 @@ def get_secrets():
         if e.response['Error']['Code'] == 'AccessDeniedException':
             print("No AWS Secret configured for EventBridge, skipping")
             eventbus_channel_id = "None"
-        else:    
-            print("There was an error with the EventBridge secret: ",e.response)
+        else:
+            print("There was an error with the EventBridge secret: ", e.response)
             eventbus_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_eventbus:
             eventbus_channel_id = get_secret_value_response_eventbus['SecretString']
         else:
-            eventbus_channel_id = "None"            
+            eventbus_channel_id = "None"
         secrets = {
             "teams": teams_channel_id,
             "slack": slack_channel_id,
             "chime": chime_channel_id,
             "eventbusname": eventbus_channel_id,
             "ahaassumerole": assumerole_channel_id
-        }    
+        }
         # uncomment below to verify secrets values
-        #print("Secrets: ",secrets)   
+        #print("Secrets: ",secrets)
     return secrets
 
 
@@ -137,7 +138,6 @@ def get_last_aws_update(event_details):
     """
     aws_message = event_details['successfulSet'][0]['eventDescription']['latestDescription']
     return aws_message
-
 
 
 def cleanup_time(event_time):
@@ -167,34 +167,118 @@ def send_to_slack(message, webhookurl):
         print("Server connection failed: ", e.reason, e.reason)
 
 
-def generate_message(affectedAccountIDs,affectedOrgEntities,service,region,statusCode,arn,latestDescription_ja,latestDescription_en):
+def generate_message(
+        affectedAccountIDs,
+        affectedOrgEntities,
+        service,
+        region,
+        statusCode,
+        arn,
+        latestDescription_ja,
+        latestDescription_en):
     # https://app.slack.com/block-kit-builder/
     message = ""
     summary = ""
 
     summary += (
         f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
-        f"the {region.upper()} region is now resolved.*"
-    )
+        f"the {region.upper()} region is now resolved.*")
     message = {
-        "text": summary,
+        # "blocks": [
+        #     {
+        #         "type": "divider"
+        #     },
+        # ],
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": summary
+                }
+            },
+		# {
+		# 	"type": "section",
+		# 	"text": {
+		# 		"type": "mrkdwn",
+		# 		"text": "This is"
+		# 	},
+		# 	"accessory": {
+		# 		"type": "overflow",
+		# 		"options": [
+		# 			{
+		# 				"text": {
+		# 					"type": "plain_text",
+		# 					"text": 'サンプル',
+		# 					"emoji": True
+		# 				},
+		# 			}
+		# 		],
+		# 	}
+		# },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "チケット起票",
+                            "emoji": True
+                        },
+                        "value": "click_me_123",
+                        "url": "https://google.com"
+                    }
+                ]
+            },
+
+        ],
         "attachments": [
             {
                 "color": "00ff00",
-                    "fields": [
-                        { "title": "Account(s)", "value": affectedAccountIDs, "short": True },
-                        { "title": "Resource(s)", "value": affectedOrgEntities, "short": True },
-                        { "title": "Service", "value": service, "short": True },
-                        { "title": "Region", "value": region, "short": True },
-                        # { "title": "Start Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['startTime']), "short": True },
-                        # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
-                        { "title": "Status", "value": statusCode, "short": True },
-                        { "title": "Event ARN", "value": arn, "short": False },                                
-                        { "title": "Updates(JA)", "value":latestDescription_ja, "short": False },
-                        { "title": "Updates(EN)", "value":latestDescription_en, "short": False }
-                    ],
-            }
+                "fields": [
+                    {"title": "Account(s)",
+                     "value": affectedAccountIDs,
+                     "short": True},
+                    {"title": "Resource(s)",
+                     "value": affectedOrgEntities,
+                     "short": True},
+                    {"title": "Service", "value": service, "short": True},
+                    {"title": "Region", "value": region, "short": True},
+                    # { "title": "Start Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['startTime']), "short": True },
+                    # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
+                    {"title": "Status", "value": statusCode, "short": True},
+                    {"title": "Event ARN", "value": arn, "short": False},
+                ],
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "color": "00ff00",
+                "fields": [
+                    {"title": "Updates(JA)",
+                     "value": latestDescription_ja,
+                     "short": False},
+                ],
+            },
+            {
+                "type": "divider"
+            },
+            {
+                "color": "00ff00",
+                "fields": [
+                    {"title": "Updates(EN)",
+                     "value": latestDescription_en,
+                     "short": False}
+                ],
+            },
+
+
+
+
         ]
+
     }
 
     return message
@@ -215,18 +299,26 @@ def lambda_handler(event, context):
         event_record = event['Records'][0]['dynamodb']['NewImage']
         # print(event_record['latestDescription(JA)']['S'])
         affectedAccountIDs = event_record['affectedAccountIDs']['L']
-        affectedOrgEntities  = event_record['affectedOrgEntities']['S']
-        service  = event_record['service']['S']
-        region  = event_record['region']['S']
-        statusCode  = event_record['statusCode']['S']
-        arn  = event_record['arn']['S']
-        latestDescription_en  = event_record['latestDescription']['S']
-        latestDescription_ja  = event_record['latestDescription(JA)']['S']
+        affectedOrgEntities = event_record['affectedOrgEntities']['S']
+        service = event_record['service']['S']
+        region = event_record['region']['S']
+        statusCode = event_record['statusCode']['S']
+        arn = event_record['arn']['S']
+        latestDescription_en = event_record['latestDescription']['S']
+        latestDescription_ja = event_record['latestDescription(JA)']['S']
 
-        slack_message = generate_message(affectedAccountIDs,affectedOrgEntities,service,region,statusCode,arn,latestDescription_ja,latestDescription_en)
+        slack_message = generate_message(
+            affectedAccountIDs,
+            affectedOrgEntities,
+            service,
+            region,
+            statusCode,
+            arn,
+            latestDescription_ja,
+            latestDescription_en)
         print(slack_message)
 
-        send_to_slack(slack_message,secrets['slack'])
+        send_to_slack(slack_message, secrets['slack'])
 
     return {
         'statusCode': 200,
