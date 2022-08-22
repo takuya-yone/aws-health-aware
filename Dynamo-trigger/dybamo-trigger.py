@@ -197,25 +197,25 @@ def generate_message(
                     "text": summary
                 }
             },
-		# {
-		# 	"type": "section",
-		# 	"text": {
-		# 		"type": "mrkdwn",
-		# 		"text": "This is"
-		# 	},
-		# 	"accessory": {
-		# 		"type": "overflow",
-		# 		"options": [
-		# 			{
-		# 				"text": {
-		# 					"type": "plain_text",
-		# 					"text": 'サンプル',
-		# 					"emoji": True
-		# 				},
-		# 			}
-		# 		],
-		# 	}
-		# },
+            # {
+            # 	"type": "section",
+            # 	"text": {
+            # 		"type": "mrkdwn",
+            # 		"text": "This is"
+            # 	},
+            # 	"accessory": {
+            # 		"type": "overflow",
+            # 		"options": [
+            # 			{
+            # 				"text": {
+            # 					"type": "plain_text",
+            # 					"text": 'サンプル',
+            # 					"emoji": True
+            # 				},
+            # 			}
+            # 		],
+            # 	}
+            # },
             {
                 "type": "actions",
                 "elements": [
@@ -252,9 +252,6 @@ def generate_message(
                 ],
             },
             {
-                "type": "divider"
-            },
-            {
                 "color": "00ff00",
                 "fields": [
                     {"title": "Updates(JA)",
@@ -262,9 +259,7 @@ def generate_message(
                      "short": False},
                 ],
             },
-            {
-                "type": "divider"
-            },
+
             {
                 "color": "00ff00",
                 "fields": [
