@@ -19,7 +19,7 @@ from pprint import pformat
 
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
-    return pformat(obj).split('\n')
+    return pformat(obj,width=1000).split('\n')
 
 def get_secrets():
     secret_teams_name = "MicrosoftChannelID"
@@ -286,6 +286,110 @@ def generate_message(
     return message
 
 
+
+def generate_diff_message(
+        affectedAccountIDs,
+        affectedOrgEntities,
+        service,
+        region,
+        statusCode,
+        arn,
+        latestDescription_ja,
+        latestDescription_en,
+        diff_text):
+    # https://app.slack.com/block-kit-builder/
+    message = ""
+    summary = ""
+
+    summary += (
+        f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
+        f"the {region.upper()} region is now resolved.*")
+    message = {
+        # "blocks": [
+        #     {
+        #         "type": "divider"
+        #     },
+        # ],
+        "blocks": [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": summary
+                }
+            },
+            # {
+            # 	"type": "section",
+            # 	"text": {
+            # 		"type": "mrkdwn",
+            # 		"text": "This is"
+            # 	},
+            # 	"accessory": {
+            # 		"type": "overflow",
+            # 		"options": [
+            # 			{
+            # 				"text": {
+            # 					"type": "plain_text",
+            # 					"text": 'サンプル',
+            # 					"emoji": True
+            # 				},
+            # 			}
+            # 		],
+            # 	}
+            # },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "チケット起票",
+                            "emoji": True
+                        },
+                        "value": "click_me_123",
+                        "url": "https://google.com"
+                    }
+                ]
+            },
+
+        ],
+        "attachments": [
+            {
+                "color": "00ff00",
+                "fields": [
+                    {"title": "Account(s)",
+                     "value": affectedAccountIDs,
+                     "short": True},
+                    {"title": "Resource(s)",
+                     "value": affectedOrgEntities,
+                     "short": True},
+                    {"title": "Service", "value": service, "short": True},
+                    {"title": "Region", "value": region, "short": True},
+                    # { "title": "Start Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['startTime']), "short": True },
+                    # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
+                    {"title": "Status", "value": statusCode, "short": True},
+                    {"title": "Event ARN", "value": arn, "short": False},
+                ],
+            },
+            {
+                "color": "00ff00",
+                "fields": [
+                    {"title": "Diff",
+                     "value": diff_text,
+                     "short": False},
+                ],
+            },
+
+
+
+
+        ]
+
+    }
+
+    return message
+
 def lambda_handler(event, context):
     # TODO implement
     print(json.dumps(event))
@@ -295,18 +399,16 @@ def lambda_handler(event, context):
     slack_message = ''
 
     if eventName == 'INSERT':
-        event_record = event['Records'][0]['dynamodb']['NewImage']
-        # print(event_record['latestDescription(JA)']['S'])
-        event_record = event['Records'][0]['dynamodb']['NewImage']
-        # print(event_record['latestDescription(JA)']['S'])
-        affectedAccountIDs = event_record['affectedAccountIDs']['L']
-        affectedOrgEntities = event_record['affectedOrgEntities']['S']
-        service = event_record['service']['S']
-        region = event_record['region']['S']
-        statusCode = event_record['statusCode']['S']
-        arn = event_record['arn']['S']
-        latestDescription_en = event_record['latestDescription']['S']
-        latestDescription_ja = event_record['latestDescription(JA)']['S']
+        new_event_record = event['Records'][0]['dynamodb']['NewImage']
+
+        arn = new_event_record['arn']['S']
+        statusCode = new_event_record['statusCode']['S']
+        affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
+        affectedOrgEntities = new_event_record['affectedOrgEntities']['L']
+        latestDescription_en = new_event_record['latestDescription']['S']
+        service = new_event_record['service']['S']
+        region = new_event_record['region']['S']
+        latestDescription_ja = ''
 
         slack_message = generate_message(
             affectedAccountIDs,
@@ -317,7 +419,7 @@ def lambda_handler(event, context):
             arn,
             latestDescription_ja,
             latestDescription_en)
-        print(slack_message)
+        # print(slack_message)
 
         send_to_slack(slack_message, secrets['slack'])
 
@@ -327,26 +429,29 @@ def lambda_handler(event, context):
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
 
         # print(new_event_record['latestDescription(JA)']['S'])
+        arn = new_event_record['arn']['S']
+        statusCode = new_event_record['statusCode']['S']
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
-        affectedOrgEntities = new_event_record['affectedOrgEntities']['S']
+        affectedOrgEntities = new_event_record['affectedOrgEntities']['L']
+        latestDescription_en = new_event_record['latestDescription']['S']
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
-        statusCode = new_event_record['statusCode']['S']
-        arn = new_event_record['arn']['S']
-        latestDescription_en = new_event_record['latestDescription']['S']
-        latestDescription_ja = new_event_record['latestDescription(JA)']['S']
+        latestDescription_ja = ''
 
-        diff = difflib.Differ()
-        output_diff = diff.compare(new_event_record['latestDescription']['S'], old_event_record['latestDescription']['S'])
-        # print(new_event_record)
-        # print(old_event_record)
-        print(new_event_record['latestDescription']['S'])
+
+        # new_event_record_lines = to_string_lines(new_event_record['latestDescription']['S'])
+        # old_event_record_lines = to_string_lines(old_event_record['latestDescription']['S'])
+
+        # diff = difflib.Differ()
+        # output_diff = diff.compare(new_event_record_lines,old_event_record_lines)
+        # diff_text = ''
         # for data in output_diff:
-        #     # if data[0:1] not in ['+', '-', '?'] :
-        #     print(data)
+        #     if data[0:1] in ['+', '-']:
+        #         # print(data)
+        #         diff_text += data
+        # print(diff_text)
 
-
-        slack_message = generate_message(
+        slack_message = generate_diff_message(
             affectedAccountIDs,
             affectedOrgEntities,
             service,
@@ -354,8 +459,20 @@ def lambda_handler(event, context):
             statusCode,
             arn,
             latestDescription_ja,
-            latestDescription_en)
+            latestDescription_en,
+            diff_text)
         print(slack_message)
+
+        # slack_message = generate_message(
+        #     affectedAccountIDs,
+        #     affectedOrgEntities,
+        #     service,
+        #     region,
+        #     statusCode,
+        #     arn,
+        #     latestDescription_ja,
+        #     latestDescription_en)
+        # print(slack_message)
 
         send_to_slack(slack_message, secrets['slack'])
 
