@@ -6,6 +6,7 @@ import time
 import decimal
 import socket
 import configparser
+import difflib
 from dateutil import parser
 from datetime import datetime, timedelta
 from urllib.parse import urlencode
@@ -13,7 +14,12 @@ from urllib.request import Request, urlopen, URLError, HTTPError
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from boto3.dynamodb.conditions import Key, Attr
+import difflib
+from pprint import pformat
 
+def to_string_lines(obj):
+    # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
+    return pformat(obj).split('\n')
 
 def get_secrets():
     secret_teams_name = "MicrosoftChannelID"
@@ -158,6 +164,7 @@ def send_to_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
+    print('------------send message!------------')
     try:
         response = urlopen(req)
         response.read()
@@ -285,12 +292,11 @@ def lambda_handler(event, context):
     eventName = event['Records'][0]['eventName']
     print(eventName)
     secrets = get_secrets()
+    slack_message = ''
 
     if eventName == 'INSERT':
         event_record = event['Records'][0]['dynamodb']['NewImage']
-        print(event_record['latestDescription(JA)']['S'])
-
-    if eventName == 'MODIFY':
+        # print(event_record['latestDescription(JA)']['S'])
         event_record = event['Records'][0]['dynamodb']['NewImage']
         # print(event_record['latestDescription(JA)']['S'])
         affectedAccountIDs = event_record['affectedAccountIDs']['L']
@@ -315,7 +321,45 @@ def lambda_handler(event, context):
 
         send_to_slack(slack_message, secrets['slack'])
 
+
+    if eventName == 'MODIFY':
+        new_event_record = event['Records'][0]['dynamodb']['NewImage']
+        old_event_record = event['Records'][0]['dynamodb']['OldImage']
+
+        # print(new_event_record['latestDescription(JA)']['S'])
+        affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
+        affectedOrgEntities = new_event_record['affectedOrgEntities']['S']
+        service = new_event_record['service']['S']
+        region = new_event_record['region']['S']
+        statusCode = new_event_record['statusCode']['S']
+        arn = new_event_record['arn']['S']
+        latestDescription_en = new_event_record['latestDescription']['S']
+        latestDescription_ja = new_event_record['latestDescription(JA)']['S']
+
+        diff = difflib.Differ()
+        output_diff = diff.compare(new_event_record['latestDescription']['S'], old_event_record['latestDescription']['S'])
+        # print(new_event_record)
+        # print(old_event_record)
+        print(new_event_record['latestDescription']['S'])
+        # for data in output_diff:
+        #     # if data[0:1] not in ['+', '-', '?'] :
+        #     print(data)
+
+
+        slack_message = generate_message(
+            affectedAccountIDs,
+            affectedOrgEntities,
+            service,
+            region,
+            statusCode,
+            arn,
+            latestDescription_ja,
+            latestDescription_en)
+        print(slack_message)
+
+        send_to_slack(slack_message, secrets['slack'])
+
     return {
         'statusCode': 200,
-        'body': json.dumps(event['Records'][0]['dynamodb']['NewImage'])
+        'body': json.dumps(slack_message)
     }
