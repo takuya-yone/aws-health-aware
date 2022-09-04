@@ -17,9 +17,11 @@ from boto3.dynamodb.conditions import Key, Attr
 import difflib
 from pprint import pformat
 
+
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
-    return pformat(obj,width=1000).split('\n')
+    return pformat(obj, width=1000).split('\n')
+
 
 def get_secrets():
     secret_teams_name = "MicrosoftChannelID"
@@ -286,7 +288,6 @@ def generate_message(
     return message
 
 
-
 def generate_diff_message(
         affectedAccountIDs,
         affectedOrgEntities,
@@ -390,6 +391,7 @@ def generate_diff_message(
 
     return message
 
+
 def lambda_handler(event, context):
     # TODO implement
     print(json.dumps(event))
@@ -410,8 +412,6 @@ def lambda_handler(event, context):
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
 
-
-
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         _event_latestDescription_ja_list = []
         translate_client = boto3.client('translate')
@@ -421,7 +421,8 @@ def lambda_handler(event, context):
                 SourceLanguageCode='en',
                 TargetLanguageCode='ja'
             )
-            _event_latestDescription_ja_list.append(response.get('TranslatedText'))
+            _event_latestDescription_ja_list.append(
+                response.get('TranslatedText'))
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
         slack_message = generate_message(
@@ -436,7 +437,6 @@ def lambda_handler(event, context):
         # print(slack_message)
 
         send_to_slack(slack_message, secrets['slack'])
-
 
     if eventName == 'MODIFY':
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
@@ -461,18 +461,16 @@ def lambda_handler(event, context):
                 SourceLanguageCode='en',
                 TargetLanguageCode='ja'
             )
-            _event_latestDescription_ja_list.append(response.get('TranslatedText'))
+            _event_latestDescription_ja_list.append(
+                response.get('TranslatedText'))
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
-
 
         diff_text = ''
         diff = difflib.Differ()
         print(old_event_record)
         print(new_event_record)
-        output_diff = diff.compare(old_event_record,new_event_record)
+        output_diff = diff.compare(old_event_record, new_event_record)
         print(output_diff)
-
-
 
         # new_event_record_lines = to_string_lines(new_event_record['latestDescription']['S'])
         # old_event_record_lines = to_string_lines(old_event_record['latestDescription']['S'])
