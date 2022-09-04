@@ -406,9 +406,23 @@ def lambda_handler(event, context):
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
         affectedOrgEntities = new_event_record['affectedOrgEntities']['L']
         latestDescription_en = new_event_record['latestDescription']['S']
+        latestDescription_ja = ''
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
-        latestDescription_ja = ''
+
+
+
+        _event_latestDescription_split = latestDescription_en.split('\n\n')
+        _event_latestDescription_ja_list = []
+        translate_client = boto3.client('translate')
+        for text in _event_latestDescription_split:
+            response = translate_client.translate_text(
+                Text=text,
+                SourceLanguageCode='en',
+                TargetLanguageCode='ja'
+            )
+            _event_latestDescription_ja_list.append(response.get('TranslatedText'))
+        latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
         slack_message = generate_message(
             affectedAccountIDs,
@@ -437,6 +451,21 @@ def lambda_handler(event, context):
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
         latestDescription_ja = ''
+
+        _event_latestDescription_split = latestDescription_en.split('\n\n')
+        _event_latestDescription_ja_list = []
+        translate_client = boto3.client('translate')
+        for text in _event_latestDescription_split:
+            response = translate_client.translate_text(
+                Text=text,
+                SourceLanguageCode='en',
+                TargetLanguageCode='ja'
+            )
+            _event_latestDescription_ja_list.append(response.get('TranslatedText'))
+        latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
+
+
+        diff_text = ''
 
 
         # new_event_record_lines = to_string_lines(new_event_record['latestDescription']['S'])
