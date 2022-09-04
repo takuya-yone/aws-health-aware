@@ -466,12 +466,17 @@ def lambda_handler(event, context):
 
 
         diff_text = ''
+        diff = difflib.Differ()
+        print(old_event_record)
+        print(new_event_record)
+        output_diff = diff.compare(old_event_record,new_event_record)
+        print(output_diff)
+
 
 
         # new_event_record_lines = to_string_lines(new_event_record['latestDescription']['S'])
         # old_event_record_lines = to_string_lines(old_event_record['latestDescription']['S'])
 
-        # diff = difflib.Differ()
         # output_diff = diff.compare(new_event_record_lines,old_event_record_lines)
         # diff_text = ''
         # for data in output_diff:
