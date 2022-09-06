@@ -17,10 +17,38 @@ from boto3.dynamodb.conditions import Key, Attr
 import difflib
 from pprint import pformat
 
+from aws_lambda_powertools import Logger
+from aws_lambda_powertools import Tracer
+
+region_name = os.environ['AWS_REGION']
+tracer = Tracer()
+logger = Logger()
+
 
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
-    return pformat(obj, width=1000).split('\n')
+    return pformat(obj, compact=True).split('\n')
+    # return plogger.info(obj)
+
+
+def get_organizations_accounts():
+    org_client = boto3.client('organizations')
+
+    # org_client = session.client(
+    #     service_name='organizations',
+    # )
+    response = org_client.list_accounts()
+    return response
+
+
+def get_discription_diff(new_description, old_description):
+    new_description_list = new_description.split('\n\n')
+    old_description_list = old_description.split('\n\n')
+    diff_list = list(set(new_description_list) - set(old_description_list))
+    if len(diff_list) == 0:
+        return ''
+    else:
+        return '\n\n'.join(text for text in diff_list)
 
 
 def get_secrets():
@@ -49,10 +77,12 @@ def get_secrets():
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            print("No AWS Secret configured for Teams, skipping")
+            logger.info("No AWS Secret configured for Teams, skipping")
             teams_channel_id = "None"
         else:
-            print("There was an error with the Teams secret: ", e.response)
+            logger.info(
+                "There was an error with the Teams secret: ",
+                e.response)
             teams_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_teams:
@@ -65,10 +95,12 @@ def get_secrets():
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            print("No AWS Secret configured for Slack, skipping")
+            logger.info("No AWS Secret configured for Slack, skipping")
             slack_channel_id = "None"
         else:
-            print("There was an error with the Slack secret: ", e.response)
+            logger.info(
+                "There was an error with the Slack secret: ",
+                e.response)
             slack_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_slack:
@@ -81,10 +113,12 @@ def get_secrets():
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            print("No AWS Secret configured for Chime, skipping")
+            logger.info("No AWS Secret configured for Chime, skipping")
             chime_channel_id = "None"
         else:
-            print("There was an error with the Chime secret: ", e.response)
+            logger.info(
+                "There was an error with the Chime secret: ",
+                e.response)
             chime_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_chime:
@@ -97,10 +131,12 @@ def get_secrets():
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            print("No AWS Secret configured for Assume Role, skipping")
+            logger.info("No AWS Secret configured for Assume Role, skipping")
             assumerole_channel_id = "None"
         else:
-            print("There was an error with the Assume Role secret: ", e.response)
+            logger.info(
+                "There was an error with the Assume Role secret: ",
+                e.response)
             assumerole_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_assumerole:
@@ -113,10 +149,12 @@ def get_secrets():
         )
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            print("No AWS Secret configured for EventBridge, skipping")
+            logger.info("No AWS Secret configured for EventBridge, skipping")
             eventbus_channel_id = "None"
         else:
-            print("There was an error with the EventBridge secret: ", e.response)
+            logger.info(
+                "There was an error with the EventBridge secret: ",
+                e.response)
             eventbus_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_eventbus:
@@ -131,7 +169,7 @@ def get_secrets():
             "ahaassumerole": assumerole_channel_id
         }
         # uncomment below to verify secrets values
-        #print("Secrets: ",secrets)
+        #logger.info("Secrets: ",secrets)
     return secrets
 
 
@@ -166,14 +204,14 @@ def send_to_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
-    print('------------send message!------------')
+    logger.info('------------send message!------------')
     try:
         response = urlopen(req)
         response.read()
     except HTTPError as e:
-        print("Request failed : ", e.code, e.reason)
+        logger.info("Request failed : ", e.code, e.reason)
     except URLError as e:
-        print("Server connection failed: ", e.reason, e.reason)
+        logger.info("Server connection failed: ", e.reason, e.reason)
 
 
 def generate_message(
@@ -297,7 +335,7 @@ def generate_diff_message(
         arn,
         latestDescription_ja,
         latestDescription_en,
-        diff_text):
+        description_diff_text):
     # https://app.slack.com/block-kit-builder/
     message = ""
     summary = ""
@@ -377,7 +415,7 @@ def generate_diff_message(
                 "color": "00ff00",
                 "fields": [
                     {"title": "Diff",
-                     "value": diff_text,
+                     "value": description_diff_text,
                      "short": False},
                 ],
             },
@@ -392,15 +430,17 @@ def generate_diff_message(
     return message
 
 
+@tracer.capture_lambda_handler
+@logger.inject_lambda_context(log_event=True)
 def lambda_handler(event, context):
     # TODO implement
-    print(json.dumps(event))
+    logger.info(json.dumps(event))
     eventName = event['Records'][0]['eventName']
-    print(eventName)
-    secrets = get_secrets()
+    logger.info(eventName)
     slack_message = ''
 
     if eventName == 'INSERT':
+        secrets = get_secrets()
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
 
         arn = new_event_record['arn']['S']
@@ -434,15 +474,16 @@ def lambda_handler(event, context):
             arn,
             latestDescription_ja,
             latestDescription_en)
-        # print(slack_message)
+        # logger.info(slack_message)
 
         send_to_slack(slack_message, secrets['slack'])
 
     if eventName == 'MODIFY':
+        # secrets = get_secrets()
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
 
-        # print(new_event_record['latestDescription(JA)']['S'])
+        # logger.info(new_event_record['latestDescription(JA)']['S'])
         arn = new_event_record['arn']['S']
         statusCode = new_event_record['statusCode']['S']
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
@@ -454,6 +495,7 @@ def lambda_handler(event, context):
 
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         _event_latestDescription_ja_list = []
+
         translate_client = boto3.client('translate')
         for text in _event_latestDescription_split:
             response = translate_client.translate_text(
@@ -465,23 +507,20 @@ def lambda_handler(event, context):
                 response.get('TranslatedText'))
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
-        diff_text = ''
         diff = difflib.Differ()
-        print(old_event_record)
-        print(new_event_record)
-        output_diff = diff.compare(old_event_record, new_event_record)
-        print(output_diff)
-
-        # new_event_record_lines = to_string_lines(new_event_record['latestDescription']['S'])
-        # old_event_record_lines = to_string_lines(old_event_record['latestDescription']['S'])
-
-        # output_diff = diff.compare(new_event_record_lines,old_event_record_lines)
-        # diff_text = ''
-        # for data in output_diff:
-        #     if data[0:1] in ['+', '-']:
-        #         # print(data)
-        #         diff_text += data
-        # print(diff_text)
+        description_diff_text = get_discription_diff(
+            new_event_record['latestDescription']['S'],
+            old_event_record['latestDescription']['S'])
+        old_event_record['latestDescription']['S'] = ''
+        new_event_record['latestDescription']['S'] = ''
+        old_event_record_line = to_string_lines(old_event_record)
+        new_event_record_line = to_string_lines(new_event_record)
+        output_diff = diff.compare(
+            old_event_record_line,
+            new_event_record_line)
+        logger.info(description_diff_text)
+        logger.info(output_diff)
+        logger.info(get_organizations_accounts())
 
         slack_message = generate_diff_message(
             affectedAccountIDs,
@@ -492,21 +531,10 @@ def lambda_handler(event, context):
             arn,
             latestDescription_ja,
             latestDescription_en,
-            diff_text)
-        print(slack_message)
+            description_diff_text)
+        logger.info(slack_message)
 
-        # slack_message = generate_message(
-        #     affectedAccountIDs,
-        #     affectedOrgEntities,
-        #     service,
-        #     region,
-        #     statusCode,
-        #     arn,
-        #     latestDescription_ja,
-        #     latestDescription_en)
-        # print(slack_message)
-
-        send_to_slack(slack_message, secrets['slack'])
+        # send_to_slack(slack_message, secrets['slack'])
 
     return {
         'statusCode': 200,

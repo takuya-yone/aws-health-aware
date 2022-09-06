@@ -1,5 +1,9 @@
+import os
 import difflib
 from pprint import pformat, pprint
+import boto3
+
+region_name = os.environ['AWS_REGION']
 
 
 def to_string_lines(obj):
@@ -7,7 +11,18 @@ def to_string_lines(obj):
     return pformat(obj, compact=True).split('\n')
     # return pprint(obj)
 
-def get_discription_diff(new_description,old_description):
+
+def get_organizations_accounts():
+    session = boto3.session.Session()
+    org_client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name
+    )
+    response = org_client.list_accounts()
+    return response
+
+
+def get_discription_diff(new_description, old_description):
     new_description_list = new_description.split('\n\n')
     old_description_list = old_description.split('\n\n')
 
@@ -16,7 +31,7 @@ def get_discription_diff(new_description,old_description):
     # diff_list = list(diff_1.union(diff_2))
     diff_list = list(set(new_description_list) - set(old_description_list))
 
-    if len(diff_list)==0:
+    if len(diff_list) == 0:
         return ''
     else:
         return '\n\n'.join(text for text in diff_list)
@@ -69,9 +84,9 @@ old_event_record = {
         'S': 'closed'}}
 
 
-
-
-description_diff_text = get_discription_diff(new_event_record['latestDescription']['S'],old_event_record['latestDescription']['S'])
+description_diff_text = get_discription_diff(
+    new_event_record['latestDescription']['S'],
+    old_event_record['latestDescription']['S'])
 
 old_event_record['latestDescription']['S'] = ''
 new_event_record['latestDescription']['S'] = ''
@@ -81,6 +96,8 @@ output_diff = diff.compare(old_event_record_line, new_event_record_line)
 
 
 print(description_diff_text)
+
+get_organizations_accounts()
 
 for data in output_diff:
     if data[0:1] in ['+', '-']:
