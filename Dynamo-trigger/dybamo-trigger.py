@@ -335,7 +335,8 @@ def generate_diff_message(
         arn,
         latestDescription_ja,
         latestDescription_en,
-        description_diff_text):
+        description_diff_text_ja,
+        description_diff_text_en):
     # https://app.slack.com/block-kit-builder/
     message = ""
     summary = ""
@@ -415,7 +416,7 @@ def generate_diff_message(
                 "color": "00ff00",
                 "fields": [
                     {"title": "Diff",
-                     "value": description_diff_text,
+                     "value": description_diff_text_ja,
                      "short": False},
                 ],
             },
@@ -508,9 +509,15 @@ def lambda_handler(event, context):
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
         diff = difflib.Differ()
-        description_diff_text = get_discription_diff(
+        description_diff_text_en = get_discription_diff(
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
+        _response = translate_client.translate_text(
+            Text=description_diff_text_en,
+            SourceLanguageCode='en',
+            TargetLanguageCode='ja')
+        description_diff_text_ja = _response.get('TranslatedText')
+
         old_event_record['latestDescription']['S'] = ''
         new_event_record['latestDescription']['S'] = ''
         old_event_record_line = to_string_lines(old_event_record)
@@ -518,7 +525,7 @@ def lambda_handler(event, context):
         output_diff = diff.compare(
             old_event_record_line,
             new_event_record_line)
-        logger.info(description_diff_text)
+        logger.info(description_diff_text_en)
         logger.info(output_diff)
         logger.info(get_organizations_accounts())
 
@@ -531,7 +538,9 @@ def lambda_handler(event, context):
             arn,
             latestDescription_ja,
             latestDescription_en,
-            description_diff_text)
+            description_diff_text_ja,
+            description_diff_text_en
+        )
         logger.info(slack_message)
 
         # send_to_slack(slack_message, secrets['slack'])

@@ -491,7 +491,7 @@ def get_health_org_entities(
                 affected_org_entities.append(entity['entityValue'])
         return affected_org_entities
     else:
-        affected_entities = []
+        affected_entities = ""
         return affected_entities
 
 
@@ -539,13 +539,10 @@ def update_org_ddb(
                     'arn': event_arn,
                     'lastUpdatedTime': str_update,
                     'added': sec_now,
-                    'ttl': int(sec_now) + delta_hours_sec + 864000,
+                    'ttl': int(sec_now) + delta_hours_sec + 86400,
                     'statusCode': status_code,
                     'affectedAccountIDs': affected_org_accounts,
-                    'affectedOrgEntities': affected_org_entities,
-                    'latestDescription': event_latestDescription,
-                    'service': event_details['successfulSet'][0]['event']['service'],
-                    'region': event_details['successfulSet'][0]['event']['region']
+                    'latestDescription': event_latestDescription
                     # Cleanup: DynamoDB entry deleted 24 hours after last
                     # update
                 }

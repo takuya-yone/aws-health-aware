@@ -347,7 +347,7 @@ def get_message_for_chime(
         message = str(
             "/md" +
             "\n" +
-            r"**:rotating_light:\[NEW\] AWS Health reported an issue with the " +
+            "**:rotating_light:\\[NEW\\] AWS Health reported an issue with the " +
             event_details['successfulSet'][0]['event']['service'].upper() +
             " service in " +
             event_details['successfulSet'][0]['event']['region'].upper() +
@@ -386,7 +386,7 @@ def get_message_for_chime(
         message = str(
             "/md" +
             "\n" +
-            r"**:heavy_check_mark:\[RESOLVED\] The AWS Health issue with the " +
+            "**:heavy_check_mark:\\[RESOLVED\\] The AWS Health issue with the " +
             event_details['successfulSet'][0]['event']['service'].upper() +
             " service in " +
             event_details['successfulSet'][0]['event']['region'].upper() +
@@ -446,7 +446,7 @@ def get_org_message_for_chime(
     if event_type == "create":
 
         message = str(
-            "/md" + "\n" + r"**:rotating_light:\[NEW\] AWS Health reported an issue with the " + event_details['successfulSet'][0]['event']['service'].upper()) + " service in " + str(
+            "/md" + "\n" + "**:rotating_light:\\[NEW\\] AWS Health reported an issue with the " + event_details['successfulSet'][0]['event']['service'].upper()) + " service in " + str(
             event_details['successfulSet'][0]['event']['region'].upper() + " region**" + "\n"
             "---" + "\n"
             "**Account(s)**: " + affected_org_accounts + "\n"
@@ -462,7 +462,7 @@ def get_org_message_for_chime(
     elif event_type == "resolve":
 
         message = str(
-            "/md" + "\n" + r"**:heavy_check_mark:\[RESOLVED\] The AWS Health issue with the " + event_details['successfulSet'][0]['event']['service'].upper()) + " service in " + str(
+            "/md" + "\n" + "**:heavy_check_mark:\\[RESOLVED\\] The AWS Health issue with the " + event_details['successfulSet'][0]['event']['service'].upper()) + " service in " + str(
             event_details['successfulSet'][0]['event']['region'].upper() + " region is now resolved.**" + "\n"
             "---" + "\n"
             "**Account(s)**: " + affected_org_accounts + "\n"
