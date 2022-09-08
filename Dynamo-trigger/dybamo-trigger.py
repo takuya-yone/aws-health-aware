@@ -1,19 +1,11 @@
 import json
 import boto3
 import os
-import re
-import time
-import decimal
-import socket
-import configparser
 import difflib
 from dateutil import parser
 from datetime import datetime, timedelta
-from urllib.parse import urlencode
 from urllib.request import Request, urlopen, URLError, HTTPError
-from botocore.config import Config
 from botocore.exceptions import ClientError
-from boto3.dynamodb.conditions import Key, Attr
 import difflib
 from pprint import pformat
 
@@ -41,6 +33,16 @@ def get_organizations_accounts():
     return response
 
 
+def get_translated_text(text):
+    translate_client = boto3.client('translate')
+    response = translate_client.translate_text(
+        Text=text,
+        SourceLanguageCode='en',
+        TargetLanguageCode='ja'
+    )
+    return response.get('TranslatedText')
+
+
 def get_discription_diff(new_description, old_description):
     new_description_list = new_description.split('\n\n')
     old_description_list = old_description.split('\n\n')
@@ -65,12 +67,11 @@ def get_secrets():
     secret_assumerole_name = "AssumeRoleArn"
 
     # create a Secrets Manager client
-    secrets_manager_client = boto3.client(service_name='secretsmanager')
+    secrets_manager_client = boto3.client('secretsmanager')
     # Iteration through the configured AWS Secrets
     try:
         get_secret_value_response_teams = secrets_manager_client.get_secret_value(
-            SecretId=secret_teams_name
-        )
+            SecretId=secret_teams_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             # logger.info("No AWS Secret configured for Teams, skipping")
@@ -87,8 +88,7 @@ def get_secrets():
             teams_channel_id = "None"
     try:
         get_secret_value_response_slack = secrets_manager_client.get_secret_value(
-            SecretId=secret_slack_name
-        )
+            SecretId=secret_slack_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             # logger.info("No AWS Secret configured for Slack, skipping")
@@ -105,8 +105,7 @@ def get_secrets():
             slack_channel_id = "None"
     try:
         get_secret_value_response_chime = secrets_manager_client.get_secret_value(
-            SecretId=secret_chime_name
-        )
+            SecretId=secret_chime_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             # logger.info("No AWS Secret configured for Chime, skipping")
@@ -123,8 +122,7 @@ def get_secrets():
             chime_channel_id = "None"
     try:
         get_secret_value_response_assumerole = secrets_manager_client.get_secret_value(
-            SecretId=secret_assumerole_name
-        )
+            SecretId=secret_assumerole_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             # logger.info("No AWS Secret configured for Assume Role, skipping")
@@ -141,8 +139,7 @@ def get_secrets():
             assumerole_channel_id = "None"
     try:
         get_secret_value_response_eventbus = secrets_manager_client.get_secret_value(
-            SecretId=event_bus_name
-        )
+            SecretId=event_bus_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
             # logger.info("No AWS Secret configured for EventBridge, skipping")
@@ -204,6 +201,7 @@ def send_to_slack(message, webhookurl):
     try:
         response = urlopen(req)
         response.read()
+        logger.info(response)
     except HTTPError as e:
         logger.info("Request failed : ", e.code, e.reason)
     except URLError as e:
@@ -240,41 +238,6 @@ def generate_insert_message(
                     "text": summary
                 }
             },
-            # {
-            # 	"type": "section",
-            # 	"text": {
-            # 		"type": "mrkdwn",
-            # 		"text": "This is"
-            # 	},
-            # 	"accessory": {
-            # 		"type": "overflow",
-            # 		"options": [
-            # 			{
-            # 				"text": {
-            # 					"type": "plain_text",
-            # 					"text": 'サンプル',
-            # 					"emoji": True
-            # 				},
-            # 			}
-            # 		],
-            # 	}
-            # },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "チケット起票",
-                            "emoji": True
-                        },
-                        "value": "click_me_123",
-                        "url": "https://google.com"
-                    }
-                ]
-            },
-
         ],
         "attachments": [
             {
@@ -311,10 +274,6 @@ def generate_insert_message(
                      "short": False}
                 ],
             },
-
-
-
-
         ]
 
     }
@@ -354,40 +313,6 @@ def generate_modify_message(
                     "text": summary
                 }
             },
-            # {
-            # 	"type": "section",
-            # 	"text": {
-            # 		"type": "mrkdwn",
-            # 		"text": "This is"
-            # 	},
-            # 	"accessory": {
-            # 		"type": "overflow",
-            # 		"options": [
-            # 			{
-            # 				"text": {
-            # 					"type": "plain_text",
-            # 					"text": 'サンプル',
-            # 					"emoji": True
-            # 				},
-            # 			}
-            # 		],
-            # 	}
-            # },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "チケット起票",
-                            "emoji": True
-                        },
-                        "value": "click_me_123",
-                        "url": "https://google.com"
-                    }
-                ]
-            },
 
         ],
         "attachments": [
@@ -406,6 +331,14 @@ def generate_modify_message(
                     # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
                     {"title": "Status", "value": statusCode, "short": True},
                     {"title": "Event ARN", "value": arn, "short": False},
+                ],
+            },
+            {
+                "color": "00ff00",
+                "fields": [
+                    {"title": "Diff(JA)",
+                     "value": description_diff_text_ja,
+                     "short": False},
                 ],
             },
             {
@@ -450,15 +383,9 @@ def lambda_handler(event, context):
 
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         _event_latestDescription_ja_list = []
-        translate_client = boto3.client('translate')
         for text in _event_latestDescription_split:
-            response = translate_client.translate_text(
-                Text=text,
-                SourceLanguageCode='en',
-                TargetLanguageCode='ja'
-            )
-            _event_latestDescription_ja_list.append(
-                response.get('TranslatedText'))
+            _translated_text = get_translated_text(text)
+            _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
         slack_message = generate_insert_message(
@@ -492,29 +419,25 @@ def lambda_handler(event, context):
         region = new_event_record['region']['S']
         latestDescription_ja = ''
 
+        # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
+        logger.info(_event_latestDescription_split)
+
         _event_latestDescription_ja_list = []
 
-        translate_client = boto3.client('translate')
         for text in _event_latestDescription_split:
-            response = translate_client.translate_text(
-                Text=text,
-                SourceLanguageCode='en',
-                TargetLanguageCode='ja'
-            )
-            _event_latestDescription_ja_list.append(
-                response.get('TranslatedText'))
+            _translated_text = get_translated_text(text)
+            _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
+        logger.info(latestDescription_ja)
 
+        # Generate Diff
         diff = difflib.Differ()
         description_diff_text_en = get_discription_diff(
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
-        _response = translate_client.translate_text(
-            Text=description_diff_text_en,
-            SourceLanguageCode='en',
-            TargetLanguageCode='ja')
-        description_diff_text_ja = _response.get('TranslatedText')
+        description_diff_text_ja = get_translated_text(
+            description_diff_text_en)
 
         old_event_record['latestDescription']['S'] = ''
         new_event_record['latestDescription']['S'] = ''
@@ -524,9 +447,8 @@ def lambda_handler(event, context):
             old_event_record_line,
             new_event_record_line)
         logger.info(description_diff_text_en)
+        logger.info(description_diff_text_ja)
         logger.info(output_diff)
-
-
 
         slack_message = generate_modify_message(
             affectedAccountIDs,
