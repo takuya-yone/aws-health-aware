@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  AHADynamoTableArn:
+    Type: String
+    Default: ''
+  AHADynamoTableStreamArn:
+    Type: String
+    Default: ''
+Globals:
+  Function:
+    Timeout: 60
+    Tracing: Active
+Resources:
+  DynamoTriggerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      RoleName: DynamoTriggerLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      MaxSessionDuration: 3600
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      - arn:aws:iam::aws:policy/TranslateReadOnly
+      Policies:
+      - PolicyName: AHA-LambdaPolicy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - dynamodb:*
+            Resource:
+            - Fn::Sub: ${AHADynamoTableArn}/stream/*
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            Resource:
+            - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action:
+            - secretsmanager:GetResourcePolicy
+            - secretsmanager:DescribeSecret
+            - secretsmanager:ListSecretVersionIds
+            - secretsmanager:GetSecretValue
+            Resource:
+            - Fn::Sub: arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:SlackChannelID-p7W8se
+            - Fn::Sub: arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:EventBusName-XPjfY2
+          - Effect: Allow
+            Action:
+            - health:DescribeAffectedAccountsForOrganization
+            - health:DescribeAffectedEntitiesForOrganization
+            - health:DescribeEventDetailsForOrganization
+            - health:DescribeEventsForOrganization
+            - health:DescribeEventDetails
+            - health:DescribeEvents
+            - health:DescribeEventTypes
+            - health:DescribeAffectedEntities
+            - organizations:ListAccounts
+            - organizations:DescribeAccount
+            Resource: '*'
+          - Effect: Allow
+            Action:
+            - dynamodb:ListTables
+            Resource:
+            - Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action:
+            - ses:SendEmail
+            Resource:
+            - Fn::Sub: arn:aws:ses:${AWS::Region}:${AWS::AccountId}:*
+          - Effect: Allow
+            Action:
+            - dynamodb:UpdateTimeToLive
+            - dynamodb:PutItem
+            - dynamodb:DeleteItem
+            - dynamodb:GetItem
+            - dynamodb:Scan
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+            - dynamodb:UpdateTable
+            - dynamodb:GetRecords
+            Resource:
+            - Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/AHA-Deployment-DynamoDBTable-968VOP84UULQ
+          - Effect: Allow
+            Action:
+            - dynamodb:GetShardIterator
+            - dynamodb:GetRecords
+            - dynamodb:ListStream
+            - dynamodb:DescribeStream
+            Resource:
+            - Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/AHA-Deployment-DynamoDBTable-968VOP84UULQ/stream/*
+          - Effect: Allow
+            Action:
+            - events:PutEvents
+            Resource:
+            - Fn::Sub: arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/health-bus
+  DynamoTriggerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role:
+        Fn::GetAtt:
+        - DynamoTriggerLambdaRole
+        - Arn
+      CodeUri: DynamoTriggerFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+      - Fn::Sub: arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+      - x86_64
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream:
+              Ref: AHADynamoTableStreamArn
+            BatchSize: 1
+            MaximumRetryAttempts: 0
+            StartingPosition: LATEST
+    Metadata:
+      SamResourceId: DynamoTriggerFunction
+  DynamoTriggerFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DynamoTriggerFunction}
+      RetentionInDays: 365

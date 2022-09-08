@@ -1,0 +1,15 @@
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "AHA-Custom-Stack"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-4vobqqqqs6kf"
+s3_prefix = "AHA-Custom-Stack"
+region = "ap-northeast-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_NAMED_IAM"
+image_repositories = []
+parameter_overrides = [
+    "AHADynamoTableArn=arn:aws:dynamodb:ap-northeast-1:272223907875:table/AHA-Deployment-DynamoDBTable-968VOP84UULQ",
+    "AHADynamoTableStreamArn=arn:aws:dynamodb:ap-northeast-1:272223907875:table/AHA-Deployment-DynamoDBTable-968VOP84UULQ/stream/2022-08-02T21:14:04.641"
+]
