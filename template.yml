@@ -98,6 +98,7 @@ Resources:
                   - "dynamodb:GetRecords"
                 Resource:
                   - !Sub "arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/AHA-Deployment-DynamoDBTable-968VOP84UULQ"
+                  - !GetAtt AccountConfigTable.Arn
               - Effect: "Allow"
                 Action: 
                   - "dynamodb:GetShardIterator"
@@ -135,6 +136,9 @@ Resources:
         - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
       Architectures:
         - x86_64
+      Environment:
+        Variables:
+          DYNAMO_ACCOUNT_CONFIG_TABLE_NAME: !Ref AccountConfigTable
       Events:
         Stream:
           Type: DynamoDB

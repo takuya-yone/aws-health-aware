@@ -17,6 +17,9 @@ tracer = Tracer()
 logger = Logger()
 
 
+DYNAMO_ACCOUNT_CONFIG_TABLE_NAME = os.environ['DYNAMO_ACCOUNT_CONFIG_TABLE_NAME']
+
+
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
     return pformat(obj, compact=True).split('\n')
@@ -41,6 +44,19 @@ def get_translated_text(text):
         TargetLanguageCode='ja'
     )
     return response.get('TranslatedText')
+
+
+def get_account_config(accountID):
+
+    dynamodb = boto3.resource('dynamodb')
+    account_config_table = dynamodb.Table(DYNAMO_ACCOUNT_CONFIG_TABLE_NAME)
+    account_config_table_response = account_config_table.get_item(
+        Key={
+            'AccountID': str(accountID)
+        }
+    )
+    item = account_config_table_response.get('Item', {})
+    return item
 
 
 def get_discription_diff(new_description, old_description):
@@ -449,6 +465,13 @@ def lambda_handler(event, context):
         logger.info(description_diff_text_en)
         logger.info(description_diff_text_ja)
         logger.info(output_diff)
+
+
+        res = get_account_config("123456789012")
+        _FilterCategory = res["FilterCategory"]
+        # _json = json.loads(_FilterCategory)
+        logger.info(_FilterCategory)
+
 
         slack_message = generate_modify_message(
             affectedAccountIDs,
