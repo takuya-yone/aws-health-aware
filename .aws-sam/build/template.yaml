@@ -105,6 +105,17 @@ Resources:
             - events:PutEvents
             Resource:
             - Fn::Sub: arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/health-bus
+  AccountConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: AHA-Custom-AccountConfig
+      AttributeDefinitions:
+      - AttributeName: AccountID
+        AttributeType: S
+      KeySchema:
+      - AttributeName: AccountID
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
   DynamoTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:

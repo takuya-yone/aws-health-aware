@@ -112,6 +112,18 @@ Resources:
                 Resource: 
                   - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/health-bus"
 
+  AccountConfigTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:  "AHA-Custom-AccountConfig"
+      AttributeDefinitions: 
+        - AttributeName: AccountID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: AccountID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
   DynamoTriggerFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
