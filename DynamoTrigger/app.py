@@ -250,7 +250,6 @@ def generate_insert_message(
     else:
         _affectedOrgEntities = "All resources in region"
 
-
     summary += (
         f":collision:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
         f"the {region.upper()} region.*")
@@ -341,8 +340,6 @@ def generate_modify_message(
     else:
         _affectedOrgEntities = "All resources in region"
 
-
-
     if statusCode == "closed":
         summary += (
             f":white_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
@@ -353,7 +350,6 @@ def generate_modify_message(
             f":rotating_light:*[UPDATED] AWS Health reported an issue with the {service.upper()} service in "
             f"the {region.upper()} region.*")
         color = "bb2124"
-
 
     message = {
         # "blocks": [
@@ -432,7 +428,6 @@ def lambda_handler(event, context):
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
 
-
         # Get Account Config
         res = get_account_config("123456789012")
         _FilterCategoryList = res["FilterCategory"]
@@ -442,7 +437,6 @@ def lambda_handler(event, context):
         logger.info(_FilterCategoryList)
         logger.info(_FilterServiceList)
         logger.info(_FilterCodeList)
-
 
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         _event_latestDescription_ja_list = []
@@ -481,7 +475,6 @@ def lambda_handler(event, context):
         region = new_event_record['region']['S']
         latestDescription_ja = ''
 
-
         # Get Account Config
         res = get_account_config("123456789012")
         _FilterCategoryList = res["FilterCategory"]
@@ -491,7 +484,6 @@ def lambda_handler(event, context):
         logger.info(_FilterCategoryList)
         logger.info(_FilterServiceList)
         logger.info(_FilterCodeList)
-
 
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
@@ -506,7 +498,7 @@ def lambda_handler(event, context):
         description_diff_text_en = get_discription_diff(
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
-        if len(description_diff_text_en)==0:
+        if len(description_diff_text_en) == 0:
             description_diff_text_ja = "差分なし"
         else:
             description_diff_text_ja = get_translated_text(
@@ -519,9 +511,6 @@ def lambda_handler(event, context):
         # output_diff = diff.compare(
         #     old_event_record_line,
         #     new_event_record_line)
- 
-
-
 
         slack_message = generate_modify_message(
             affectedAccountIDs,
