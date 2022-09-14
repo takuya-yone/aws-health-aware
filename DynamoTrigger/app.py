@@ -239,13 +239,14 @@ def generate_insert_message(
 
     if len(affectedAccountIDs) >= 1:
         # _affectedAccountIDs = "\n".join(affectedAccountIDs)
-        _affectedAccountIDs = str(affectedAccountIDs)
-
+        _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
+        _affectedAccountIDs = "\n".join(_tmpList)
     else:
         _affectedAccountIDs = "All accounts in region"
     if len(affectedOrgEntities) >= 1:
         # _affectedOrgEntities = "\n".join(affectedOrgEntities)
-        _affectedOrgEntities = str(affectedOrgEntities)
+        _tmpList = list(map(lambda x: x['S'], affectedOrgEntities))
+        _affectedOrgEntities = "\n".join(_tmpList)
     else:
         _affectedOrgEntities = "All resources in region"
 
@@ -329,16 +330,17 @@ def generate_modify_message(
 
     if len(affectedAccountIDs) >= 1:
         # _affectedAccountIDs = "\n".join(affectedAccountIDs)
-        _affectedAccountIDs = str(affectedAccountIDs)
-        pass
+        _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
+        _affectedAccountIDs = "\n".join(_tmpList)
     else:
         _affectedAccountIDs = "All accounts in region"
     if len(affectedOrgEntities) >= 1:
         # _affectedOrgEntities = "\n".join(affectedOrgEntities)
-        _affectedOrgEntities = str(affectedOrgEntities)
-        pass
+        _tmpList = list(map(lambda x: x['S'], affectedOrgEntities))
+        _affectedOrgEntities = "\n".join(_tmpList)
     else:
         _affectedOrgEntities = "All resources in region"
+
 
 
     if statusCode == "closed":
@@ -403,11 +405,7 @@ def generate_modify_message(
                      "short": False},
                 ],
             },
-
-
-
         ]
-
     }
 
     return message
@@ -416,7 +414,6 @@ def generate_modify_message(
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context(log_event=True)
 def lambda_handler(event, context):
-    # TODO implement
     logger.info(json.dumps(event))
     eventName = event['Records'][0]['eventName']
     logger.info(eventName)
@@ -434,6 +431,18 @@ def lambda_handler(event, context):
         latestDescription_ja = ''
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
+
+
+        # Get Account Config
+        res = get_account_config("123456789012")
+        _FilterCategoryList = res["FilterCategory"]
+        _FilterServiceList = res["FilterService"]
+        _FilterCodeList = res["FilterCode"]
+        # _json = json.loads(_FilterCategory)
+        logger.info(_FilterCategoryList)
+        logger.info(_FilterServiceList)
+        logger.info(_FilterCodeList)
+
 
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         _event_latestDescription_ja_list = []
@@ -463,7 +472,6 @@ def lambda_handler(event, context):
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
 
-        # logger.info(new_event_record['latestDescription(JA)']['S'])
         arn = new_event_record['arn']['S']
         statusCode = new_event_record['statusCode']['S']
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
@@ -474,17 +482,24 @@ def lambda_handler(event, context):
         latestDescription_ja = ''
 
 
+        # Get Account Config
+        res = get_account_config("123456789012")
+        _FilterCategoryList = res["FilterCategory"]
+        _FilterServiceList = res["FilterService"]
+        _FilterCodeList = res["FilterCode"]
+        # _json = json.loads(_FilterCategory)
+        logger.info(_FilterCategoryList)
+        logger.info(_FilterServiceList)
+        logger.info(_FilterCodeList)
+
+
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
-        logger.info(_event_latestDescription_split)
-
         _event_latestDescription_ja_list = []
-
         for text in _event_latestDescription_split:
             _translated_text = get_translated_text(text)
             _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
-        logger.info(latestDescription_ja)
 
         # Generate Diff
         diff = difflib.Differ()
@@ -501,18 +516,11 @@ def lambda_handler(event, context):
         new_event_record['latestDescription']['S'] = ''
         old_event_record_line = to_string_lines(old_event_record)
         new_event_record_line = to_string_lines(new_event_record)
-        output_diff = diff.compare(
-            old_event_record_line,
-            new_event_record_line)
-        logger.info(description_diff_text_en)
-        logger.info(description_diff_text_ja)
-        logger.info(output_diff)
+        # output_diff = diff.compare(
+        #     old_event_record_line,
+        #     new_event_record_line)
+ 
 
-
-        res = get_account_config("123456789012")
-        _FilterCategory = res["FilterCategory"]
-        # _json = json.loads(_FilterCategory)
-        logger.info(_FilterCategory)
 
 
         slack_message = generate_modify_message(

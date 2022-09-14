@@ -1,0 +1,44 @@
+{
+    "AccountID": {
+      "S": "123456789012"
+    },
+    "EmailAddress": {
+      "S": ""
+    },
+    "FilterCategory": {
+      "L": [
+        {
+          "S": "accountNotification"
+        },
+        {
+          "S": "issue"
+        },
+        {
+          "S": "scheduledChange"
+        }
+      ]
+    },
+    "FilterCode": {
+      "L": [
+        {
+          "S": "AWS_EC2_INSTANCE_RETIREMENT_SCHEDULED"
+        }
+      ]
+    },
+    "FilterService": {
+      "L": [
+        {
+          "S": "EC2"
+        },
+        {
+          "S": "RDS"
+        }
+      ]
+    },
+    "SlackWebHookURL": {
+      "S": ""
+    },
+    "TeamsWebHookURL": {
+      "S": ""
+    }
+  }
