@@ -238,8 +238,8 @@ def generate_insert_message(
     summary = ""
 
     summary += (
-        f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
-        f"the {region.upper()} region is now resolved.*")
+        f":rotating_light:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
+        f"the {region.upper()} region.*")
     message = {
         # "blocks": [
         #     {
@@ -312,9 +312,19 @@ def generate_modify_message(
     message = ""
     summary = ""
 
-    summary += (
-        f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
-        f"the {region.upper()} region is now resolved.*")
+
+    if statusCode != "closed":
+        summary += (
+            f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
+            f"the {region.upper()} region is now resolved.*")
+        color = "00ff00"
+    else:
+        summary += (
+            f":rotating_light:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
+            f"the {region.upper()} region.*")
+        color = "bb2124"
+
+
     message = {
         # "blocks": [
         #     {
@@ -333,7 +343,7 @@ def generate_modify_message(
         ],
         "attachments": [
             {
-                "color": "00ff00",
+                "color": color,
                 "fields": [
                     {"title": "Account(s)",
                      "value": affectedAccountIDs,
@@ -350,7 +360,7 @@ def generate_modify_message(
                 ],
             },
             {
-                "color": "00ff00",
+                "color": color,
                 "fields": [
                     {"title": "Diff(JA)",
                      "value": description_diff_text_ja,
@@ -358,7 +368,7 @@ def generate_modify_message(
                 ],
             },
             {
-                "color": "00ff00",
+                "color": color,
                 "fields": [
                     {"title": "Updates(JA)",
                      "value": latestDescription_ja,
@@ -435,6 +445,10 @@ def lambda_handler(event, context):
         region = new_event_record['region']['S']
         latestDescription_ja = ''
 
+
+        logger.info(affectedAccountIDs)
+        logger.info(affectedOrgEntities)
+
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         logger.info(_event_latestDescription_split)
@@ -452,8 +466,11 @@ def lambda_handler(event, context):
         description_diff_text_en = get_discription_diff(
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
-        description_diff_text_ja = get_translated_text(
-            description_diff_text_en)
+        if len(description_diff_text_en)==0:
+            description_diff_text_ja = ""
+        else:
+            description_diff_text_ja = get_translated_text(
+                description_diff_text_en)
 
         old_event_record['latestDescription']['S'] = ''
         new_event_record['latestDescription']['S'] = ''
