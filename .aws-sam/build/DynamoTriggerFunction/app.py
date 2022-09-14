@@ -28,10 +28,6 @@ def to_string_lines(obj):
 
 def get_organizations_accounts():
     org_client = boto3.client('organizations')
-
-    # org_client = session.client(
-    #     service_name='organizations',
-    # )
     response = org_client.list_accounts()
     return response
 
@@ -90,12 +86,8 @@ def get_secrets():
             SecretId=secret_teams_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            # logger.info("No AWS Secret configured for Teams, skipping")
             teams_channel_id = "None"
         else:
-            # logger.info(
-            #     "There was an error with the Teams secret: ",
-            #     e.response)
             teams_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_teams:
@@ -107,12 +99,8 @@ def get_secrets():
             SecretId=secret_slack_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            # logger.info("No AWS Secret configured for Slack, skipping")
             slack_channel_id = "None"
         else:
-            # logger.info(
-            #     "There was an error with the Slack secret: ",
-            #     e.response)
             slack_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_slack:
@@ -124,12 +112,8 @@ def get_secrets():
             SecretId=secret_chime_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            # logger.info("No AWS Secret configured for Chime, skipping")
             chime_channel_id = "None"
         else:
-            # logger.info(
-            #     "There was an error with the Chime secret: ",
-            #     e.response)
             chime_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_chime:
@@ -141,12 +125,8 @@ def get_secrets():
             SecretId=secret_assumerole_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            # logger.info("No AWS Secret configured for Assume Role, skipping")
             assumerole_channel_id = "None"
         else:
-            # logger.info(
-            #     "There was an error with the Assume Role secret: ",
-            #     e.response)
             assumerole_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_assumerole:
@@ -158,12 +138,8 @@ def get_secrets():
             SecretId=event_bus_name)
     except ClientError as e:
         if e.response['Error']['Code'] == 'AccessDeniedException':
-            # logger.info("No AWS Secret configured for EventBridge, skipping")
             eventbus_channel_id = "None"
         else:
-            # logger.info(
-            #     "There was an error with the EventBridge secret: ",
-            #     e.response)
             eventbus_channel_id = "None"
     finally:
         if 'SecretString' in get_secret_value_response_eventbus:
@@ -180,33 +156,6 @@ def get_secrets():
         # uncomment below to verify secrets values
         #logger.info("Secrets: ",secrets)
     return secrets
-
-
-def get_last_aws_update(event_details):
-    """
-    Takes as input the event_details and returns the last update from AWS (instead of the entire timeline)
-
-    :param event_details: Detailed information about a specific AWS health event.
-    :type event_details: dict
-    :return: the last update message from AWS
-    :rtype: str
-    """
-    aws_message = event_details['successfulSet'][0]['eventDescription']['latestDescription']
-    return aws_message
-
-
-def cleanup_time(event_time):
-    """
-    Takes as input a datetime string as received from The AWS Health event_detail call.  It converts this string to a
-    datetime object, changes the timezone to EST and then formats it into a readable string to display in Slack.
-
-    :param event_time: datetime string
-    :type event_time: str
-    :return: A formatted string that includes the month, date, year and 12-hour time.
-    :rtype: str
-    """
-    event_time = datetime.strptime(event_time[:16], '%Y-%m-%d %H:%M')
-    return event_time.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def send_to_slack(message, webhookurl):
@@ -238,28 +187,20 @@ def generate_insert_message(
     summary = ""
 
     if len(affectedAccountIDs) >= 1:
-        # _affectedAccountIDs = "\n".join(affectedAccountIDs)
         _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
         _affectedAccountIDs = "\n".join(_tmpList)
     else:
         _affectedAccountIDs = "All accounts in region"
     if len(affectedOrgEntities) >= 1:
-        # _affectedOrgEntities = "\n".join(affectedOrgEntities)
         _tmpList = list(map(lambda x: x['S'], affectedOrgEntities))
         _affectedOrgEntities = "\n".join(_tmpList)
     else:
         _affectedOrgEntities = "All resources in region"
 
-
     summary += (
         f":collision:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
         f"the {region.upper()} region.*")
     message = {
-        # "blocks": [
-        #     {
-        #         "type": "divider"
-        #     },
-        # ],
         "blocks": [
             {
                 "type": "section",
@@ -281,8 +222,6 @@ def generate_insert_message(
                      "short": True},
                     {"title": "Service", "value": service, "short": True},
                     {"title": "Region", "value": region, "short": True},
-                    # { "title": "Start Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['startTime']), "short": True },
-                    # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
                     {"title": "Status", "value": statusCode, "short": True},
                     {"title": "Event ARN", "value": arn, "short": False},
                 ],
@@ -295,7 +234,6 @@ def generate_insert_message(
                      "short": False},
                 ],
             },
-
             {
                 "color": "00ff00",
                 "fields": [
@@ -305,7 +243,6 @@ def generate_insert_message(
                 ],
             },
         ]
-
     }
 
     return message
@@ -329,19 +266,15 @@ def generate_modify_message(
     logger.info(affectedOrgEntities)
 
     if len(affectedAccountIDs) >= 1:
-        # _affectedAccountIDs = "\n".join(affectedAccountIDs)
         _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
         _affectedAccountIDs = "\n".join(_tmpList)
     else:
         _affectedAccountIDs = "All accounts in region"
     if len(affectedOrgEntities) >= 1:
-        # _affectedOrgEntities = "\n".join(affectedOrgEntities)
         _tmpList = list(map(lambda x: x['S'], affectedOrgEntities))
         _affectedOrgEntities = "\n".join(_tmpList)
     else:
         _affectedOrgEntities = "All resources in region"
-
-
 
     if statusCode == "closed":
         summary += (
@@ -354,13 +287,7 @@ def generate_modify_message(
             f"the {region.upper()} region.*")
         color = "bb2124"
 
-
     message = {
-        # "blocks": [
-        #     {
-        #         "type": "divider"
-        #     },
-        # ],
         "blocks": [
             {
                 "type": "section",
@@ -383,8 +310,6 @@ def generate_modify_message(
                      "short": True},
                     {"title": "Service", "value": service, "short": True},
                     {"title": "Region", "value": region, "short": True},
-                    # { "title": "Start Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['startTime']), "short": True },
-                    # { "title": "End Time (UTC)", "value": cleanup_time(event_details['successfulSet'][0]['event']['endTime']), "short": True },
                     {"title": "Status", "value": statusCode, "short": True},
                     {"title": "Event ARN", "value": arn, "short": False},
                 ],
@@ -407,7 +332,6 @@ def generate_modify_message(
             },
         ]
     }
-
     return message
 
 
@@ -425,13 +349,18 @@ def lambda_handler(event, context):
 
         arn = new_event_record['arn']['S']
         statusCode = new_event_record['statusCode']['S']
+        # PUBLIC | ACCOUNT_SPECIFIC
+        eventScopeCode = new_event_record['eventScopeCode']['S']
+        # issue | accountNotification | scheduledChange | investigation
+        eventTypeCategory = new_event_record['eventTypeCategory']['S']
+        # [a-zA-Z0-9\_\-]{3,100}
+        eventTypeCode = new_event_record['eventTypeCode']['S']
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
         affectedOrgEntities = new_event_record['affectedOrgEntities']['L']
         latestDescription_en = new_event_record['latestDescription']['S']
         latestDescription_ja = ''
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
-
 
         # Get Account Config
         res = get_account_config("123456789012")
@@ -442,6 +371,18 @@ def lambda_handler(event, context):
         logger.info(_FilterCategoryList)
         logger.info(_FilterServiceList)
         logger.info(_FilterCodeList)
+
+        if eventTypeCategory in _FilterCategoryList:
+            logger.info("!!Filter Matched eventTypeCategory:" + eventTypeCategory)
+            return None
+        if service in _FilterServiceList:
+            logger.info("!!Filter Matched service:" + service)
+            return None
+        if eventTypeCode in _FilterCodeList:
+            logger.info("!!Filter Matched eventTypeCode:" + eventTypeCode)
+            return None
+        else:
+            logger.info("Filter Not Matched")
 
 
         _event_latestDescription_split = latestDescription_en.split('\n\n')
@@ -464,6 +405,8 @@ def lambda_handler(event, context):
 
         send_to_slack(slack_message, secrets['slack'])
 
+        return None
+
     if eventName == 'MODIFY':
         secrets = get_secrets()
         accounts = get_organizations_accounts()
@@ -473,14 +416,20 @@ def lambda_handler(event, context):
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
 
         arn = new_event_record['arn']['S']
+        service = new_event_record['service']['S']
+        # open | closed | upcoming
         statusCode = new_event_record['statusCode']['S']
+        # PUBLIC | ACCOUNT_SPECIFIC
+        eventScopeCode = new_event_record['eventScopeCode']['S']
+        # issue | accountNotification | scheduledChange | investigation
+        eventTypeCategory = new_event_record['eventTypeCategory']['S']
+        # [a-zA-Z0-9\_\-]{3,100}
+        eventTypeCode = new_event_record['eventTypeCode']['S']
         affectedAccountIDs = new_event_record['affectedAccountIDs']['L']
         affectedOrgEntities = new_event_record['affectedOrgEntities']['L']
         latestDescription_en = new_event_record['latestDescription']['S']
-        service = new_event_record['service']['S']
         region = new_event_record['region']['S']
         latestDescription_ja = ''
-
 
         # Get Account Config
         res = get_account_config("123456789012")
@@ -492,6 +441,17 @@ def lambda_handler(event, context):
         logger.info(_FilterServiceList)
         logger.info(_FilterCodeList)
 
+        if eventTypeCategory in _FilterCategoryList:
+            logger.info("!!Filter Matched eventTypeCategory:" + eventTypeCategory)
+            return None
+        if service in _FilterServiceList:
+            logger.info("!!Filter Matched service:" + service)
+            return None
+        if eventTypeCode in _FilterCodeList:
+            logger.info("!!Filter Matched eventTypeCode:" + eventTypeCode)
+            return None
+        else:
+            logger.info("Filter Not Matched")
 
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
@@ -506,7 +466,7 @@ def lambda_handler(event, context):
         description_diff_text_en = get_discription_diff(
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
-        if len(description_diff_text_en)==0:
+        if len(description_diff_text_en) == 0:
             description_diff_text_ja = "差分なし"
         else:
             description_diff_text_ja = get_translated_text(
@@ -519,9 +479,6 @@ def lambda_handler(event, context):
         # output_diff = diff.compare(
         #     old_event_record_line,
         #     new_event_record_line)
- 
-
-
 
         slack_message = generate_modify_message(
             affectedAccountIDs,
@@ -539,7 +496,4 @@ def lambda_handler(event, context):
 
         send_to_slack(slack_message, secrets['slack'])
 
-    return {
-        'statusCode': 200,
-        'body': json.dumps(slack_message)
-    }
+        return None
