@@ -237,8 +237,21 @@ def generate_insert_message(
     message = ""
     summary = ""
 
+    if len(affectedAccountIDs) >= 1:
+        # _affectedAccountIDs = "\n".join(affectedAccountIDs)
+        _affectedAccountIDs = str(affectedAccountIDs)
+
+    else:
+        _affectedAccountIDs = "All accounts in region"
+    if len(affectedOrgEntities) >= 1:
+        # _affectedOrgEntities = "\n".join(affectedOrgEntities)
+        _affectedOrgEntities = str(affectedOrgEntities)
+    else:
+        _affectedOrgEntities = "All resources in region"
+
+
     summary += (
-        f":rotating_light:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
+        f":collision:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
         f"the {region.upper()} region.*")
     message = {
         # "blocks": [
@@ -260,10 +273,10 @@ def generate_insert_message(
                 "color": "00ff00",
                 "fields": [
                     {"title": "Account(s)",
-                     "value": affectedAccountIDs,
+                     "value": _affectedAccountIDs,
                      "short": True},
                     {"title": "Resource(s)",
-                     "value": affectedOrgEntities,
+                     "value": _affectedOrgEntities,
                      "short": True},
                     {"title": "Service", "value": service, "short": True},
                     {"title": "Region", "value": region, "short": True},
@@ -311,16 +324,31 @@ def generate_modify_message(
     # https://app.slack.com/block-kit-builder/
     message = ""
     summary = ""
+    logger.info(affectedAccountIDs)
+    logger.info(affectedOrgEntities)
+
+    if len(affectedAccountIDs) >= 1:
+        # _affectedAccountIDs = "\n".join(affectedAccountIDs)
+        _affectedAccountIDs = str(affectedAccountIDs)
+        pass
+    else:
+        _affectedAccountIDs = "All accounts in region"
+    if len(affectedOrgEntities) >= 1:
+        # _affectedOrgEntities = "\n".join(affectedOrgEntities)
+        _affectedOrgEntities = str(affectedOrgEntities)
+        pass
+    else:
+        _affectedOrgEntities = "All resources in region"
 
 
-    if statusCode != "closed":
+    if statusCode == "closed":
         summary += (
-            f":heavy_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
+            f":white_check_mark:*[RESOLVED] The AWS Health issue with the {service.upper()} service in "
             f"the {region.upper()} region is now resolved.*")
         color = "00ff00"
     else:
         summary += (
-            f":rotating_light:*[NEW] AWS Health reported an issue with the {service.upper()} service in "
+            f":rotating_light:*[UPDATED] AWS Health reported an issue with the {service.upper()} service in "
             f"the {region.upper()} region.*")
         color = "bb2124"
 
@@ -346,10 +374,10 @@ def generate_modify_message(
                 "color": color,
                 "fields": [
                     {"title": "Account(s)",
-                     "value": affectedAccountIDs,
+                     "value": _affectedAccountIDs,
                      "short": True},
                     {"title": "Resource(s)",
-                     "value": affectedOrgEntities,
+                     "value": _affectedOrgEntities,
                      "short": True},
                     {"title": "Service", "value": service, "short": True},
                     {"title": "Region", "value": region, "short": True},
@@ -446,9 +474,6 @@ def lambda_handler(event, context):
         latestDescription_ja = ''
 
 
-        logger.info(affectedAccountIDs)
-        logger.info(affectedOrgEntities)
-
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
         logger.info(_event_latestDescription_split)
@@ -467,7 +492,7 @@ def lambda_handler(event, context):
             new_event_record['latestDescription']['S'],
             old_event_record['latestDescription']['S'])
         if len(description_diff_text_en)==0:
-            description_diff_text_ja = ""
+            description_diff_text_ja = "差分なし"
         else:
             description_diff_text_ja = get_translated_text(
                 description_diff_text_en)
