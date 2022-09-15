@@ -162,15 +162,14 @@ def send_to_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
-    logger.info('------------send message!------------')
+    print('------------send message!------------')
     try:
         response = urlopen(req)
-        response.read()
-        logger.info(response)
+        print("Request success : ", response.read())
     except HTTPError as e:
-        logger.info("Request failed : ", e.code, e.reason)
+        print("Request failed : ", e.code, e.reason)
     except URLError as e:
-        logger.info("Server connection failed: ", e.reason, e.reason)
+        print("Server connection failed: ", e.reason, e.reason)
 
 
 def generate_insert_message(
