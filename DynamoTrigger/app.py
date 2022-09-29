@@ -171,6 +171,7 @@ def send_slack(message, webhookurl):
     except URLError as e:
         print("Server connection failed: ", e.reason, e.reason)
 
+
 def send_email(message, recipient_list):
     # SENDER = os.environ['FROM_EMAIL']
     SENDER = "t-yonezawa@nri.co.jp"
@@ -197,6 +198,7 @@ def send_email(message, recipient_list):
         },
     )
     logger.info(response)
+
 
 def generate_insert_slack_message(
         affectedAccountIDs,
@@ -378,13 +380,11 @@ def generate_modify_email_message(
     else:
         _affectedOrgEntities = "All resources in region"
 
-
     if len(affectedAccountIDs) >= 1:
         _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
         _affectedAccountIDs = "\n".join(_tmpList)
     else:
         _affectedAccountIDs = "All accounts in region"
-
 
     BODY_HTML = f"""
     <html>
@@ -562,8 +562,8 @@ def lambda_handler(event, context):
             region,
             statusCode,
             arn,
-            latestDescription_ja.replace('\n\n','<br><br>'),
-            latestDescription_en.replace('\n\n','<br><br>'),
+            latestDescription_ja.replace('\n\n', '<br><br>'),
+            latestDescription_en.replace('\n\n', '<br><br>'),
             description_diff_text_ja,
             description_diff_text_en
         )
@@ -577,23 +577,22 @@ def lambda_handler(event, context):
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
-                
-                _FilterCategoryList = res.get("FilterCategory",[])
+
+                _FilterCategoryList = res.get("FilterCategory", [])
                 logger.info(_FilterCategoryList)
                 # FilterCategoryList = [x['S'] for x in _FilterCategoryList]
-                
-                _FilterServiceList = res.get("FilterService",[])
+
+                _FilterServiceList = res.get("FilterService", [])
                 logger.info(_FilterServiceList)
                 # FilterServiceList = [x['S'] for x in _FilterServiceList]
-                
-                
-                _FilterCodeList = res.get("FilterCode",[])
+
+                _FilterCodeList = res.get("FilterCode", [])
                 logger.info(_FilterCodeList)
                 # FilterCodeList = [x['S'] for x in _FilterCodeList]
 
-                _EmailAddress = res.get("EmailAddress","")
-                _SlackWebHookURL = res.get("SlackWebHookURL","")
-                _TeamsWebHookURL = res.get("TeamsWebHookURL","")
+                _EmailAddress = res.get("EmailAddress", "")
+                _SlackWebHookURL = res.get("SlackWebHookURL", "")
+                _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
                 # _json = json.loads(_FilterCategory)
 
                 # logger.info(res)
@@ -607,7 +606,10 @@ def lambda_handler(event, context):
                     logger.info("!!!Filter Matched service:" + service + "!!!")
                     continue
                 if eventTypeCode in _FilterCodeList:
-                    logger.info("!!!Filter Matched eventTypeCode:" + eventTypeCode + "!!!")
+                    logger.info(
+                        "!!!Filter Matched eventTypeCode:" +
+                        eventTypeCode +
+                        "!!!")
                     continue
                 else:
                     logger.info("Filter Not Matched")
@@ -619,12 +621,9 @@ def lambda_handler(event, context):
                     if _EmailAddress != "":
                         _EmailAddressList = []
                         _EmailAddressList.append(_EmailAddress)
-                        send_email(email_message,_EmailAddressList)
-
-
+                        send_email(email_message, _EmailAddressList)
 
         elif eventScopeCode == "PUBLIC":
             logger.info("PUBLICCC")
-
 
         return None
