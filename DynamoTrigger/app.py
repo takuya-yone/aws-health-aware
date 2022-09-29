@@ -158,11 +158,11 @@ def get_secrets():
     return secrets
 
 
-def send_to_slack(message, webhookurl):
+def send_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
-    print('------------send message!------------')
+    print('------------send Slack message!------------')
     try:
         response = urlopen(req)
         print("Request success : ", response.read())
@@ -171,8 +171,34 @@ def send_to_slack(message, webhookurl):
     except URLError as e:
         print("Server connection failed: ", e.reason, e.reason)
 
+def send_email(message, recipient_list):
+    # SENDER = os.environ['FROM_EMAIL']
+    SENDER = "t-yonezawa@nri.co.jp"
+    #AWS_REGIONS = "us-east-1"
+    AWS_REGION = os.environ['AWS_REGION']
+    subject = "AWS Health Alert"
+    client = boto3.client('ses', region_name=AWS_REGION)
+    print('------------send Email message!------------')
+    response = client.send_email(
+        Source=SENDER,
+        Destination={
+            'ToAddresses': recipient_list
+        },
+        Message={
+            'Body': {
+                'Html': {
+                    'Data': message
+                },
+            },
+            'Subject': {
+                'Charset': 'UTF-8',
+                'Data': subject,
+            },
+        },
+    )
+    logger.info(response)
 
-def generate_insert_message(
+def generate_insert_slack_message(
         affectedAccountIDs,
         affectedOrgEntities,
         service,
@@ -247,7 +273,7 @@ def generate_insert_message(
     return message
 
 
-def generate_modify_message(
+def generate_modify_slack_message(
         affectedAccountIDs,
         affectedOrgEntities,
         service,
@@ -334,6 +360,53 @@ def generate_modify_message(
     return message
 
 
+def generate_modify_email_message(
+        affectedAccountIDs,
+        affectedOrgEntities,
+        service,
+        region,
+        statusCode,
+        arn,
+        latestDescription_ja,
+        latestDescription_en,
+        description_diff_text_ja,
+        description_diff_text_en):
+
+    if len(affectedOrgEntities) >= 1:
+        _tmpList = list(map(lambda x: x['S'], affectedOrgEntities))
+        _affectedOrgEntities = "\n".join(_tmpList)
+    else:
+        _affectedOrgEntities = "All resources in region"
+
+
+    if len(affectedAccountIDs) >= 1:
+        _tmpList = list(map(lambda x: x['S'], affectedAccountIDs))
+        _affectedAccountIDs = "\n".join(_tmpList)
+    else:
+        _affectedAccountIDs = "All accounts in region"
+
+
+    BODY_HTML = f"""
+    <html>
+        <body>
+            <h>Greetings from AWS Health Aware,</h><br>
+            <p>There is an AWS incident that is in effect which may likely impact your resources. Here are the details:<br><br>
+            <b>Account(s):</b> {_affectedAccountIDs}<br>
+            <b>Resource(s):</b> {_affectedOrgEntities}<br>
+            <b>Service:</b> {service}<br>
+            <b>Region:</b> {region}<br>
+            <b>Status:</b> {statusCode}<br>
+            <b>Event ARN:</b> {arn}<br>
+            <b>Diff(JA):</b><br> {description_diff_text_ja} <br><br>
+            <b>Updates(JA):</b><br>{latestDescription_ja} <br><br>
+
+            </p>
+        </body>
+    </html>
+"""
+    return BODY_HTML
+
+
 @tracer.capture_lambda_handler
 @logger.inject_lambda_context(log_event=True)
 def lambda_handler(event, context):
@@ -341,6 +414,7 @@ def lambda_handler(event, context):
     eventName = event['Records'][0]['eventName']
     logger.info(eventName)
     slack_message = ''
+    email_message = ''
 
     if eventName == 'INSERT':
         secrets = get_secrets()
@@ -361,15 +435,24 @@ def lambda_handler(event, context):
         service = new_event_record['service']['S']
         region = new_event_record['region']['S']
 
+        logger.info(affectedAccountIDs)
+
         # Get Account Config
         res = get_account_config("123456789012")
         _FilterCategoryList = res["FilterCategory"]
         _FilterServiceList = res["FilterService"]
         _FilterCodeList = res["FilterCode"]
+        _EmailAddress = res["EmailAddress"]
+        _SlackWebHookURL = res["SlackWebHookURL"]
+        _TeamsWebHookURL = res["TeamsWebHookURL"]
         # _json = json.loads(_FilterCategory)
+
         logger.info(_FilterCategoryList)
         logger.info(_FilterServiceList)
         logger.info(_FilterCodeList)
+        logger.info(_EmailAddress)
+        logger.info(_SlackWebHookURL)
+        logger.info(_TeamsWebHookURL)
 
         if eventTypeCategory in _FilterCategoryList:
             logger.info(
@@ -392,7 +475,7 @@ def lambda_handler(event, context):
             _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
-        slack_message = generate_insert_message(
+        slack_message = generate_insert_slack_message(
             affectedAccountIDs,
             affectedOrgEntities,
             service,
@@ -403,14 +486,14 @@ def lambda_handler(event, context):
             latestDescription_en)
         # logger.info(slack_message)
 
-        send_to_slack(slack_message, secrets['slack'])
+        send_slack(slack_message, secrets['slack'])
 
         return None
 
     if eventName == 'MODIFY':
-        secrets = get_secrets()
+        # secrets = get_secrets()
         accounts = get_organizations_accounts()
-        logger.info(secrets)
+        # logger.info(secrets)
         logger.info(accounts)
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
@@ -431,29 +514,7 @@ def lambda_handler(event, context):
         region = new_event_record['region']['S']
         latestDescription_ja = ''
 
-        # Get Account Config
-        res = get_account_config("123456789012")
-        _FilterCategoryList = res["FilterCategory"]
-        _FilterServiceList = res["FilterService"]
-        _FilterCodeList = res["FilterCode"]
-        # _json = json.loads(_FilterCategory)
-        logger.info(_FilterCategoryList)
-        logger.info(_FilterServiceList)
-        logger.info(_FilterCodeList)
-
-        if eventTypeCategory in _FilterCategoryList:
-            logger.info(
-                "!!Filter Matched eventTypeCategory:" +
-                eventTypeCategory)
-            return None
-        if service in _FilterServiceList:
-            logger.info("!!Filter Matched service:" + service)
-            return None
-        if eventTypeCode in _FilterCodeList:
-            logger.info("!!Filter Matched eventTypeCode:" + eventTypeCode)
-            return None
-        else:
-            logger.info("Filter Not Matched")
+        logger.info(affectedAccountIDs)
 
         # Translate Description
         _event_latestDescription_split = latestDescription_en.split('\n\n')
@@ -482,7 +543,7 @@ def lambda_handler(event, context):
         #     old_event_record_line,
         #     new_event_record_line)
 
-        slack_message = generate_modify_message(
+        slack_message = generate_modify_slack_message(
             affectedAccountIDs,
             affectedOrgEntities,
             service,
@@ -494,8 +555,76 @@ def lambda_handler(event, context):
             description_diff_text_ja,
             description_diff_text_en
         )
-        logger.info(slack_message)
+        email_message = generate_modify_email_message(
+            affectedAccountIDs,
+            affectedOrgEntities,
+            service,
+            region,
+            statusCode,
+            arn,
+            latestDescription_ja.replace('\n\n','<br><br>'),
+            latestDescription_en.replace('\n\n','<br><br>'),
+            description_diff_text_ja,
+            description_diff_text_en
+        )
 
-        send_to_slack(slack_message, secrets['slack'])
+        # loop for AccountIDs
+
+        if eventScopeCode == "ACCOUNT_SPECIFIC":
+            for affectedAccountID in affectedAccountIDs:
+                _AccountID = affectedAccountID['S']
+                logger.info(_AccountID)
+
+                # Get Account Config
+                res = get_account_config(_AccountID)
+                
+                _FilterCategoryList = res.get("FilterCategory",[])
+                logger.info(_FilterCategoryList)
+                # FilterCategoryList = [x['S'] for x in _FilterCategoryList]
+                
+                _FilterServiceList = res.get("FilterService",[])
+                logger.info(_FilterServiceList)
+                # FilterServiceList = [x['S'] for x in _FilterServiceList]
+                
+                
+                _FilterCodeList = res.get("FilterCode",[])
+                logger.info(_FilterCodeList)
+                # FilterCodeList = [x['S'] for x in _FilterCodeList]
+
+                _EmailAddress = res.get("EmailAddress","")
+                _SlackWebHookURL = res.get("SlackWebHookURL","")
+                _TeamsWebHookURL = res.get("TeamsWebHookURL","")
+                # _json = json.loads(_FilterCategory)
+
+                # logger.info(res)
+
+                if eventTypeCategory in _FilterCategoryList:
+                    logger.info(
+                        "!!!Filter Matched eventTypeCategory:" +
+                        eventTypeCategory + "!!!")
+                    continue
+                if service in _FilterServiceList:
+                    logger.info("!!!Filter Matched service:" + service + "!!!")
+                    continue
+                if eventTypeCode in _FilterCodeList:
+                    logger.info("!!!Filter Matched eventTypeCode:" + eventTypeCode + "!!!")
+                    continue
+                else:
+                    logger.info("Filter Not Matched")
+                    logger.info(_SlackWebHookURL)
+                    # Send Slack Message
+                    if _SlackWebHookURL != "":
+                        send_slack(slack_message, _SlackWebHookURL)
+                    # Send Email Message
+                    if _EmailAddress != "":
+                        _EmailAddressList = []
+                        _EmailAddressList.append(_EmailAddress)
+                        send_email(email_message,_EmailAddressList)
+
+
+
+        elif eventScopeCode == "PUBLIC":
+            logger.info("PUBLICCC")
+
 
         return None
