@@ -162,7 +162,7 @@ def send_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
-    print('------------send Slack message!------------')
+    print('------send Slack message!------')
     try:
         response = urlopen(req)
         print("Request success : ", response.read())
@@ -179,7 +179,7 @@ def send_email(message, recipient_list):
     AWS_REGION = os.environ['AWS_REGION']
     subject = "AWS Health Alert"
     client = boto3.client('ses', region_name=AWS_REGION)
-    print('------------send Email message!------------')
+    print('------send Email message!------')
     response = client.send_email(
         Source=SENDER,
         Destination={
@@ -577,7 +577,7 @@ def lambda_handler(event, context):
                 # Get Account Alias
                 account_alias = [x for x in accounts['Accounts'] if x['Id'] == _AccountID][0]['Name']
                 # logger.info(account_alias)
-                print('ーーーー AccountID:{},AccountAlias:{} ーーーー'.format(_AccountID, account_alias))
+                print('---- AccountID:{}, AccountAlias:{} ----'.format(_AccountID, account_alias))
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
