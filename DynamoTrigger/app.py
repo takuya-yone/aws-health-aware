@@ -575,9 +575,11 @@ def lambda_handler(event, context):
                 # logger.info(_AccountID)
 
                 # Get Account Alias
-                account_alias = [x for x in accounts['Accounts'] if x['Id'] == _AccountID][0]['Name']
+                account_alias = [x for x in accounts['Accounts']
+                                 if x['Id'] == _AccountID][0]['Name']
                 # logger.info(account_alias)
-                print('-- AccountID:{}, AccountAlias:{} --'.format(_AccountID, account_alias))
+                print(
+                    '-- AccountID:{}, AccountAlias:{} --'.format(_AccountID, account_alias))
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
