@@ -417,7 +417,7 @@ def lambda_handler(event, context):
     email_message = ''
 
     if eventName == 'INSERT':
-        secrets = get_secrets()
+        # secrets = get_secrets()
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
 
         arn = new_event_record['arn']['S']
@@ -445,14 +445,13 @@ def lambda_handler(event, context):
         _EmailAddress = res["EmailAddress"]
         _SlackWebHookURL = res["SlackWebHookURL"]
         _TeamsWebHookURL = res["TeamsWebHookURL"]
-        # _json = json.loads(_FilterCategory)
 
-        logger.info(_FilterCategoryList)
-        logger.info(_FilterServiceList)
-        logger.info(_FilterCodeList)
-        logger.info(_EmailAddress)
-        logger.info(_SlackWebHookURL)
-        logger.info(_TeamsWebHookURL)
+        # logger.info(_FilterCategoryList)
+        # logger.info(_FilterServiceList)
+        # logger.info(_FilterCodeList)
+        # logger.info(_EmailAddress)
+        # logger.info(_SlackWebHookURL)
+        # logger.info(_TeamsWebHookURL)
 
         if eventTypeCategory in _FilterCategoryList:
             logger.info(
@@ -573,7 +572,12 @@ def lambda_handler(event, context):
         if eventScopeCode == "ACCOUNT_SPECIFIC":
             for affectedAccountID in affectedAccountIDs:
                 _AccountID = affectedAccountID['S']
-                logger.info(_AccountID)
+                # logger.info(_AccountID)
+
+                # Get Account Alias
+                account_alias = [x for x in accounts['Accounts'] if x['Id'] == _AccountID][0]['Name']
+                # logger.info(account_alias)
+                print('ーーーー AccountID:{},AccountAlias:{} ーーーー'.format(_AccountID, account_alias))
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
@@ -592,10 +596,7 @@ def lambda_handler(event, context):
 
                 _EmailAddress = res.get("EmailAddress", "")
                 _SlackWebHookURL = res.get("SlackWebHookURL", "")
-                _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
-                # _json = json.loads(_FilterCategory)
-
-                # logger.info(res)
+                # _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
 
                 if eventTypeCategory in _FilterCategoryList:
                     logger.info(

@@ -162,7 +162,7 @@ def send_slack(message, webhookurl):
     slack_message = message
     req = Request(webhookurl, data=json.dumps(slack_message).encode("utf-8"),
                   headers={'content-type': 'application/json'})
-    print('------------send Slack message!------------')
+    print('------send Slack message!------')
     try:
         response = urlopen(req)
         print("Request success : ", response.read())
@@ -179,7 +179,7 @@ def send_email(message, recipient_list):
     AWS_REGION = os.environ['AWS_REGION']
     subject = "AWS Health Alert"
     client = boto3.client('ses', region_name=AWS_REGION)
-    print('------------send Email message!------------')
+    print('------send Email message!------')
     response = client.send_email(
         Source=SENDER,
         Destination={
@@ -417,7 +417,7 @@ def lambda_handler(event, context):
     email_message = ''
 
     if eventName == 'INSERT':
-        secrets = get_secrets()
+        # secrets = get_secrets()
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
 
         arn = new_event_record['arn']['S']
@@ -445,14 +445,13 @@ def lambda_handler(event, context):
         _EmailAddress = res["EmailAddress"]
         _SlackWebHookURL = res["SlackWebHookURL"]
         _TeamsWebHookURL = res["TeamsWebHookURL"]
-        # _json = json.loads(_FilterCategory)
 
-        logger.info(_FilterCategoryList)
-        logger.info(_FilterServiceList)
-        logger.info(_FilterCodeList)
-        logger.info(_EmailAddress)
-        logger.info(_SlackWebHookURL)
-        logger.info(_TeamsWebHookURL)
+        # logger.info(_FilterCategoryList)
+        # logger.info(_FilterServiceList)
+        # logger.info(_FilterCodeList)
+        # logger.info(_EmailAddress)
+        # logger.info(_SlackWebHookURL)
+        # logger.info(_TeamsWebHookURL)
 
         if eventTypeCategory in _FilterCategoryList:
             logger.info(
@@ -573,7 +572,12 @@ def lambda_handler(event, context):
         if eventScopeCode == "ACCOUNT_SPECIFIC":
             for affectedAccountID in affectedAccountIDs:
                 _AccountID = affectedAccountID['S']
-                logger.info(_AccountID)
+                # logger.info(_AccountID)
+
+                # Get Account Alias
+                account_alias = [x for x in accounts['Accounts'] if x['Id'] == _AccountID][0]['Name']
+                # logger.info(account_alias)
+                print('---- AccountID:{}, AccountAlias:{} ----'.format(_AccountID, account_alias))
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
@@ -592,10 +596,7 @@ def lambda_handler(event, context):
 
                 _EmailAddress = res.get("EmailAddress", "")
                 _SlackWebHookURL = res.get("SlackWebHookURL", "")
-                _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
-                # _json = json.loads(_FilterCategory)
-
-                # logger.info(res)
+                # _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
 
                 if eventTypeCategory in _FilterCategoryList:
                     logger.info(
