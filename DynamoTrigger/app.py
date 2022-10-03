@@ -583,6 +583,7 @@ def lambda_handler(event, context):
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
+                _Priority = res.get("Priority", "")
 
                 _FilterCategoryList = res.get("FilterCategory", [])
                 logger.info(_FilterCategoryList)
@@ -622,9 +623,10 @@ def lambda_handler(event, context):
                         send_slack(slack_message, _SlackWebHookURL)
                     # Send Email Message
                     if _EmailAddress != "":
-                        _EmailAddressList = []
-                        _EmailAddressList.append(_EmailAddress)
-                        send_email(email_message, _EmailAddressList)
+                        if _Priority == "HIGH" or _Priority == "MIDDLE":
+                            _EmailAddressList = []
+                            _EmailAddressList.append(_EmailAddress)
+                            send_email(email_message, _EmailAddressList)
 
         elif eventScopeCode == "PUBLIC":
             logger.info("PUBLICCC")
@@ -634,6 +636,7 @@ def lambda_handler(event, context):
 
             # Get Account Config
             res = get_account_config(_AccountID)
+            _Priority = res.get("Priority", "")
 
             _FilterCategoryList = res.get("FilterCategory", [])
             logger.info(_FilterCategoryList)
@@ -670,8 +673,8 @@ def lambda_handler(event, context):
                     send_slack(slack_message, _SlackWebHookURL)
                 # Send Email Message
                 if _EmailAddress != "":
-                    _EmailAddressList = []
-                    _EmailAddressList.append(_EmailAddress)
-                    send_email(email_message, _EmailAddressList)
-
+                    if _Priority == "HIGH" or _Priority == "MIDDLE":
+                        _EmailAddressList = []
+                        _EmailAddressList.append(_EmailAddress)
+                        send_email(email_message, _EmailAddressList)
         return None
