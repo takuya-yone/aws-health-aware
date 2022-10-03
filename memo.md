@@ -1,4 +1,6 @@
 # Memo
+- Health API Ref
+  - https://docs.aws.amazon.com/health/latest/APIReference/API_Event.html
 - DynamoTrigger用LambdaのRole
   - Streamの権限を追加
 ```Json
