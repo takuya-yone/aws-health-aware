@@ -575,9 +575,11 @@ def lambda_handler(event, context):
                 # logger.info(_AccountID)
 
                 # Get Account Alias
-                account_alias = [x for x in accounts['Accounts'] if x['Id'] == _AccountID][0]['Name']
+                account_alias = [x for x in accounts['Accounts']
+                                 if x['Id'] == _AccountID][0]['Name']
                 # logger.info(account_alias)
-                print('-- AccountID:{}, AccountAlias:{} --'.format(_AccountID, account_alias))
+                print(
+                    '-- AccountID:{}, AccountAlias:{} --'.format(_AccountID, account_alias))
 
                 # Get Account Config
                 res = get_account_config(_AccountID)
@@ -626,5 +628,50 @@ def lambda_handler(event, context):
 
         elif eventScopeCode == "PUBLIC":
             logger.info("PUBLICCC")
+            
+            _AccountID = "PUBLIC"
+            print('-- AccountID:{} --'.format(_AccountID))
+
+            # Get Account Config
+            res = get_account_config(_AccountID)
+
+            _FilterCategoryList = res.get("FilterCategory", [])
+            logger.info(_FilterCategoryList)
+            # FilterCategoryList = [x['S'] for x in _FilterCategoryList]
+
+            _FilterServiceList = res.get("FilterService", [])
+            logger.info(_FilterServiceList)
+            # FilterServiceList = [x['S'] for x in _FilterServiceList]
+
+            _FilterCodeList = res.get("FilterCode", [])
+            logger.info(_FilterCodeList)
+            # FilterCodeList = [x['S'] for x in _FilterCodeList]
+
+            _EmailAddress = res.get("EmailAddress", "")
+            _SlackWebHookURL = res.get("SlackWebHookURL", "")
+            # _TeamsWebHookURL = res.get("TeamsWebHookURL", "")
+
+            if eventTypeCategory in _FilterCategoryList:
+                logger.info(
+                    "!!!Filter Matched eventTypeCategory:" +
+                    eventTypeCategory + "!!!")
+            if service in _FilterServiceList:
+                logger.info("!!!Filter Matched service:" + service + "!!!")
+            if eventTypeCode in _FilterCodeList:
+                logger.info(
+                    "!!!Filter Matched eventTypeCode:" +
+                    eventTypeCode +
+                    "!!!")
+            else:
+                logger.info("Filter Not Matched")
+                logger.info(_SlackWebHookURL)
+                # Send Slack Message
+                if _SlackWebHookURL != "":
+                    send_slack(slack_message, _SlackWebHookURL)
+                # Send Email Message
+                if _EmailAddress != "":
+                    _EmailAddressList = []
+                    _EmailAddressList.append(_EmailAddress)
+                    send_email(email_message, _EmailAddressList)
 
         return None
