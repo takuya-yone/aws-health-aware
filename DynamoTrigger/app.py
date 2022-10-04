@@ -1,5 +1,6 @@
 import json
 import boto3
+from boto3.session import Session
 import os
 import difflib
 from dateutil import parser
@@ -18,7 +19,11 @@ logger = Logger()
 
 
 DYNAMO_ACCOUNT_CONFIG_TABLE_NAME = os.environ['DYNAMO_ACCOUNT_CONFIG_TABLE_NAME']
+ASSUME_ROLE_ARN = "arn:aws:iam::023829981675:role/AHA-Deployment-LambdaExecutionRole-1CTC9R0J2X0RV"
 
+def myconverter(json_object):
+    if isinstance(json_object, datetime):
+        return json_object.__str__()
 
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
@@ -63,100 +68,6 @@ def get_discription_diff(new_description, old_description):
         return ''
     else:
         return '\n\n'.join(text for text in diff_list)
-
-
-def get_secrets():
-    secret_teams_name = "MicrosoftChannelID"
-    secret_slack_name = "SlackChannelID"
-    secret_chime_name = "ChimeChannelID"
-    region_name = os.environ['AWS_REGION']
-    get_secret_value_response_assumerole = ""
-    get_secret_value_response_eventbus = ""
-    get_secret_value_response_chime = ""
-    get_secret_value_response_teams = ""
-    get_secret_value_response_slack = ""
-    event_bus_name = "EventBusName"
-    secret_assumerole_name = "AssumeRoleArn"
-
-    # create a Secrets Manager client
-    secrets_manager_client = boto3.client('secretsmanager')
-    # Iteration through the configured AWS Secrets
-    try:
-        get_secret_value_response_teams = secrets_manager_client.get_secret_value(
-            SecretId=secret_teams_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDeniedException':
-            teams_channel_id = "None"
-        else:
-            teams_channel_id = "None"
-    finally:
-        if 'SecretString' in get_secret_value_response_teams:
-            teams_channel_id = get_secret_value_response_teams['SecretString']
-        else:
-            teams_channel_id = "None"
-    try:
-        get_secret_value_response_slack = secrets_manager_client.get_secret_value(
-            SecretId=secret_slack_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDeniedException':
-            slack_channel_id = "None"
-        else:
-            slack_channel_id = "None"
-    finally:
-        if 'SecretString' in get_secret_value_response_slack:
-            slack_channel_id = get_secret_value_response_slack['SecretString']
-        else:
-            slack_channel_id = "None"
-    try:
-        get_secret_value_response_chime = secrets_manager_client.get_secret_value(
-            SecretId=secret_chime_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDeniedException':
-            chime_channel_id = "None"
-        else:
-            chime_channel_id = "None"
-    finally:
-        if 'SecretString' in get_secret_value_response_chime:
-            chime_channel_id = get_secret_value_response_chime['SecretString']
-        else:
-            chime_channel_id = "None"
-    try:
-        get_secret_value_response_assumerole = secrets_manager_client.get_secret_value(
-            SecretId=secret_assumerole_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDeniedException':
-            assumerole_channel_id = "None"
-        else:
-            assumerole_channel_id = "None"
-    finally:
-        if 'SecretString' in get_secret_value_response_assumerole:
-            assumerole_channel_id = get_secret_value_response_assumerole['SecretString']
-        else:
-            assumerole_channel_id = "None"
-    try:
-        get_secret_value_response_eventbus = secrets_manager_client.get_secret_value(
-            SecretId=event_bus_name)
-    except ClientError as e:
-        if e.response['Error']['Code'] == 'AccessDeniedException':
-            eventbus_channel_id = "None"
-        else:
-            eventbus_channel_id = "None"
-    finally:
-        if 'SecretString' in get_secret_value_response_eventbus:
-            eventbus_channel_id = get_secret_value_response_eventbus['SecretString']
-        else:
-            eventbus_channel_id = "None"
-        secrets = {
-            "teams": teams_channel_id,
-            "slack": slack_channel_id,
-            "chime": chime_channel_id,
-            "eventbusname": eventbus_channel_id,
-            "ahaassumerole": assumerole_channel_id
-        }
-        # uncomment below to verify secrets values
-        #logger.info("Secrets: ",secrets)
-    return secrets
-
 
 def send_slack(message, webhookurl):
     slack_message = message
@@ -417,7 +328,6 @@ def lambda_handler(event, context):
     email_message = ''
 
     if eventName == 'INSERT':
-        # secrets = get_secrets()
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
 
         arn = new_event_record['arn']['S']
@@ -490,10 +400,39 @@ def lambda_handler(event, context):
         return None
 
     if eventName == 'MODIFY':
-        # secrets = get_secrets()
-        accounts = get_organizations_accounts()
+        # client = boto3.client('sts')
+        # account_id = client.get_caller_identity()["Account"]
+        # userid = client.get_caller_identity()["UserId"]
+        # arn = client.get_caller_identity()["Arn"]
+        # print(account_id,userid,arn)
+        # # client = boto3.client('sts')
+        # response = client.assume_role(
+        #         RoleArn=ASSUME_ROLE_ARN,
+        #         RoleSessionName="HealthSession"
+        #     )
+        # print(response)
+
+        # session = Session(
+        #     aws_access_key_id=response['Credentials']['AccessKeyId'],
+        #     aws_secret_access_key=response['Credentials']['SecretAccessKey'],
+        #     aws_session_token=response['Credentials']['SessionToken'],
+        #     region_name=region_name
+        # )
+        # print(session)
+
+        # health_client = session.client('health')
+        # org_event_paginator = health_client.get_paginator('describe_events_for_organization')
+        # org_event_page_iterator = org_event_paginator.paginate()
+        # for response in org_event_page_iterator:
+        #     events = response.get('events', [])
+        #     aws_events = json.dumps(events,default=myconverter)
+        #     aws_events = json.loads(aws_events)
+        #     print('Event(s) Received: ', json.dumps(aws_events))
+
+
+        # accounts = get_organizations_accounts()
         # logger.info(secrets)
-        logger.info(accounts)
+        # logger.info(accounts)
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
         old_event_record = event['Records'][0]['dynamodb']['OldImage']
 

@@ -43,6 +43,11 @@ Resources:
             Statement:
               - Effect: "Allow"
                 Action:
+                  - "sts:AssumeRole"
+                Resource: 
+                  - "*"
+              - Effect: "Allow"
+                Action:
                   - "dynamodb:*"
                 Resource: 
                   - !Sub ${AHADynamoTableArn}/stream/*

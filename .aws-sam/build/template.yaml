@@ -37,6 +37,11 @@ Resources:
           Statement:
           - Effect: Allow
             Action:
+            - sts:AssumeRole
+            Resource:
+            - '*'
+          - Effect: Allow
+            Action:
             - dynamodb:*
             Resource:
             - Fn::Sub: ${AHADynamoTableArn}/stream/*
