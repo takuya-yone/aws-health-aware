@@ -400,36 +400,34 @@ def lambda_handler(event, context):
         return None
 
     if eventName == 'MODIFY':
-        client = boto3.client('sts')
-        account_id = client.get_caller_identity()["Account"]
-        userid = client.get_caller_identity()["UserId"]
-        arn = client.get_caller_identity()["Arn"]
-        print(account_id,userid,arn)
         # client = boto3.client('sts')
-        response = client.assume_role(
-                RoleArn=ASSUME_ROLE_ARN,
-                RoleSessionName="HealthSession"
-            )
-        print(response)
+        # account_id = client.get_caller_identity()["Account"]
+        # userid = client.get_caller_identity()["UserId"]
+        # arn = client.get_caller_identity()["Arn"]
+        # print(account_id,userid,arn)
+        # # client = boto3.client('sts')
+        # response = client.assume_role(
+        #         RoleArn=ASSUME_ROLE_ARN,
+        #         RoleSessionName="HealthSession"
+        #     )
+        # print(response)
 
-        session = Session(
-            aws_access_key_id=response['Credentials']['AccessKeyId'],
-            aws_secret_access_key=response['Credentials']['SecretAccessKey'],
-            aws_session_token=response['Credentials']['SessionToken'],
-            region_name=region_name
-        )
-        print(session)
+        # session = Session(
+        #     aws_access_key_id=response['Credentials']['AccessKeyId'],
+        #     aws_secret_access_key=response['Credentials']['SecretAccessKey'],
+        #     aws_session_token=response['Credentials']['SessionToken'],
+        #     region_name=region_name
+        # )
+        # print(session)
 
-        health_client = session.client('health')
-        org_event_paginator = health_client.get_paginator('describe_events_for_organization')
-        # org_event_page_iterator = org_event_paginator.paginate(filter=str_filter)
-        org_event_page_iterator = org_event_paginator.paginate()
-        for response in org_event_page_iterator:
-            events = response.get('events', [])
-            aws_events = json.dumps(events,default=myconverter)
-            aws_events = json.loads(aws_events)
-            print('Event(s) Received: ', json.dumps(aws_events))
-            # print(res)
+        # health_client = session.client('health')
+        # org_event_paginator = health_client.get_paginator('describe_events_for_organization')
+        # org_event_page_iterator = org_event_paginator.paginate()
+        # for response in org_event_page_iterator:
+        #     events = response.get('events', [])
+        #     aws_events = json.dumps(events,default=myconverter)
+        #     aws_events = json.loads(aws_events)
+        #     print('Event(s) Received: ', json.dumps(aws_events))
 
 
         # accounts = get_organizations_accounts()

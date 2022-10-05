@@ -21,9 +21,11 @@ logger = Logger()
 DYNAMO_ACCOUNT_CONFIG_TABLE_NAME = os.environ['DYNAMO_ACCOUNT_CONFIG_TABLE_NAME']
 ASSUME_ROLE_ARN = "arn:aws:iam::023829981675:role/AHA-Deployment-LambdaExecutionRole-1CTC9R0J2X0RV"
 
+
 def myconverter(json_object):
     if isinstance(json_object, datetime):
         return json_object.__str__()
+
 
 def to_string_lines(obj):
     # dictのオブジェクトを文字列に変換＆改行で分割したリストを返却
@@ -68,6 +70,7 @@ def get_discription_diff(new_description, old_description):
         return ''
     else:
         return '\n\n'.join(text for text in diff_list)
+
 
 def send_slack(message, webhookurl):
     slack_message = message
@@ -429,7 +432,6 @@ def lambda_handler(event, context):
         #     aws_events = json.loads(aws_events)
         #     print('Event(s) Received: ', json.dumps(aws_events))
 
-
         # accounts = get_organizations_accounts()
         # logger.info(secrets)
         # logger.info(accounts)
@@ -569,7 +571,7 @@ def lambda_handler(event, context):
 
         elif eventScopeCode == "PUBLIC":
             logger.info("PUBLICCC")
-            
+
             _AccountID = "PUBLIC"
             print('-- AccountID:{} --'.format(_AccountID))
 
