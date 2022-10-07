@@ -556,18 +556,18 @@ def update_org_ddb(
             affected_org_accounts_details = [
                 f"{get_account_name(account_id)} ({account_id})" for account_id in affected_org_accounts]
             # send to configured endpoints
-            if status_code != "closed":
-                send_org_alert(
-                    event_details,
-                    affected_org_accounts_details,
-                    affected_org_entities,
-                    event_type="create")
-            else:
-                send_org_alert(
-                    event_details,
-                    affected_org_accounts_details,
-                    affected_org_entities,
-                    event_type="resolve")
+            # if status_code != "closed":
+            #     send_org_alert(
+            #         event_details,
+            #         affected_org_accounts_details,
+            #         affected_org_entities,
+            #         event_type="create")
+            # else:
+            #     send_org_alert(
+            #         event_details,
+            #         affected_org_accounts_details,
+            #         affected_org_entities,
+            #         event_type="resolve")
 
         else:
             item = response['Item']
