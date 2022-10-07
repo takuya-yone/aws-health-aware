@@ -375,7 +375,6 @@ def lambda_handler(event, context):
     if eventName == 'INSERT':
    
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
-        old_event_record = event['Records'][0]['dynamodb']['OldImage']
 
         arn = new_event_record['arn']['S']
         service = new_event_record['service']['S']
@@ -403,20 +402,8 @@ def lambda_handler(event, context):
             _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
 
-        # Generate Diff
-        diff = difflib.Differ()
-        description_diff_text_en = get_discription_diff(
-            new_event_record['latestDescription']['S'],
-            old_event_record['latestDescription']['S'])
-        if len(description_diff_text_en) == 0:
-            description_diff_text_ja = "差分なし"
-        else:
-            description_diff_text_ja = get_translated_text(
-                description_diff_text_en)
 
-        old_event_record['latestDescription']['S'] = ''
         new_event_record['latestDescription']['S'] = ''
-        old_event_record_line = to_string_lines(old_event_record)
         new_event_record_line = to_string_lines(new_event_record)
         # output_diff = diff.compare(
         #     old_event_record_line,
@@ -430,9 +417,7 @@ def lambda_handler(event, context):
             statusCode,
             arn,
             latestDescription_ja,
-            latestDescription_en,
-            description_diff_text_ja,
-            description_diff_text_en
+            latestDescription_en
         )
         email_message = generate_insert_email_message(
             affectedAccountIDs,
@@ -442,9 +427,7 @@ def lambda_handler(event, context):
             statusCode,
             arn,
             latestDescription_ja.replace('\n\n', '<br><br>'),
-            latestDescription_en.replace('\n\n', '<br><br>'),
-            description_diff_text_ja,
-            description_diff_text_en
+            latestDescription_en.replace('\n\n', '<br><br>')
         )
 
         # loop for AccountIDs
