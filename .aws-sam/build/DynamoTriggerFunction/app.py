@@ -48,6 +48,30 @@ def get_translated_text(text):
     )
     return response.get('TranslatedText')
 
+def create_ops_item(description,priority,severity,title):
+    ssm_client = boto3.client('ssm')
+    response = ssm_client.create_ops_item(
+        Description=description,
+        # OpsItemType='/aws/issue',
+        Priority=priority,
+        Source='HealthAware',
+        Title=title,
+        Tags=[
+            {
+                'Key': 'Owner',
+                'Value': 'AHA-Custom'
+            },
+        ],
+        # Category='string',
+        Severity=str(severity),
+        # ActualStartTime=datetime(2015, 1, 1),
+        # ActualEndTime=datetime(2015, 1, 1),
+        # PlannedStartTime=datetime(2015, 1, 1),
+        # PlannedEndTime=datetime(2015, 1, 1)
+    )
+    logger.info(response)
+    return response.get('OpsItemId')
+
 
 def get_account_config(accountID):
 
@@ -480,8 +504,13 @@ def lambda_handler(event, context):
                     continue
                 else:
                     logger.info("Filter Not Matched")
-                    logger.info(_SlackWebHookURL)
+
+                    # Create OpsItem
+                    _title = f"{service.upper()} service in the {region.upper()} region"
+                    create_ops_item(latestDescription_ja,4,3,_title)
+
                     # Send Slack Message
+                    logger.info(_SlackWebHookURL)
                     if _SlackWebHookURL != "":
                         send_slack(slack_message, _SlackWebHookURL)
                     # Send Email Message
@@ -530,8 +559,13 @@ def lambda_handler(event, context):
                     "!!!")
             else:
                 logger.info("Filter Not Matched")
-                logger.info(_SlackWebHookURL)
+
+                # Create OpsItem
+                _title = f"{service.upper()} service in the {region.upper()} region"
+                create_ops_item(latestDescription_ja,4,3,_title)
+
                 # Send Slack Message
+                logger.info(_SlackWebHookURL)
                 if _SlackWebHookURL != "":
                     send_slack(slack_message, _SlackWebHookURL)
                 # Send Email Message

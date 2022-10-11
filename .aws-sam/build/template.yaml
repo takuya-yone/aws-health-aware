@@ -76,6 +76,20 @@ Resources:
             Resource: '*'
           - Effect: Allow
             Action:
+            - ssm:ListOpsItemEvents
+            - ssm:GetOpsItem
+            - ssm:DisassociateOpsItemRelatedItem
+            - ssm:AssociateOpsItemRelatedItem
+            - ssm:CreateOpsItem
+            - ssm:ListOpsItemRelatedItems
+            - ssm:DescribeOpsItems
+            - ssm:UpdateOpsItem
+            - ssm:AddTagsToResource
+            - ssm:RemoveTagsFromResource
+            - ssm:ListTagsForResource
+            Resource: '*'
+          - Effect: Allow
+            Action:
             - dynamodb:ListTables
             Resource:
             - Fn::Sub: arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:*

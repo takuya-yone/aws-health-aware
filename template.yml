@@ -36,6 +36,7 @@ Resources:
         - 'arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole'
         - 'arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess'
         - 'arn:aws:iam::aws:policy/TranslateReadOnly'
+        # - 'arn:aws:iam::aws:policy/aws-service-role/AWSSSMOpsInsightsServiceRolePolicy'
       Policies:
         - PolicyName: "AHA-LambdaPolicy"
           PolicyDocument:
@@ -79,6 +80,20 @@ Resources:
                   - "health:DescribeAffectedEntities"
                   - "organizations:ListAccounts"
                   - "organizations:DescribeAccount"
+                Resource: "*"
+              - Effect: "Allow"
+                Action: 
+                  - "ssm:ListOpsItemEvents"
+                  - "ssm:GetOpsItem"
+                  - "ssm:DisassociateOpsItemRelatedItem"
+                  - "ssm:AssociateOpsItemRelatedItem"
+                  - "ssm:CreateOpsItem"
+                  - "ssm:ListOpsItemRelatedItems"
+                  - "ssm:DescribeOpsItems"
+                  - "ssm:UpdateOpsItem"
+                  - "ssm:AddTagsToResource"
+                  - "ssm:RemoveTagsFromResource"
+                  - "ssm:ListTagsForResource"
                 Resource: "*"
               - Effect: "Allow"
                 Action: 
