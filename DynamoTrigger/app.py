@@ -9,6 +9,8 @@ from urllib.request import Request, urlopen, URLError, HTTPError
 from botocore.exceptions import ClientError
 import difflib
 from pprint import pformat
+import hashlib
+
 
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools import Tracer
@@ -49,11 +51,33 @@ def get_translated_text(text):
     return response.get('TranslatedText')
 
 
-def get_ops_item():
+def get_ops_item_id(arn, account_id):
     ssm_client = boto3.client('ssm')
+    _HashedArn = hashlib.sha256(arn.encode()).hexdigest()
+    print(arn, _HashedArn)
     response = ssm_client.describe_ops_items(
+        OpsItemFilters=[
+            {
+                'Key': 'OperationalDataValue',
+                'Values': [
+                    _HashedArn
+                ],
+                'Operator': 'Equal'
+            },
+            {
+                'Key': 'Status',
+                'Values': [
+                    'Open', 'InProgress'
+                ],
+                'Operator': 'Equal'
+            }
+        ]
     )
-    return None
+    logger.info(response)
+    OpsItemSummaries = response.get('OpsItemSummaries')
+    OpsItemId = [x for x in OpsItemSummaries if x['OperationalData']
+                 ['Account']['Value'] == str(account_id)][0]['OpsItemId']
+    return OpsItemId
 
 
 def update_ops_item():
@@ -67,7 +91,6 @@ def create_ops_item(description, priority, severity, title, arn, account):
     ssm_client = boto3.client('ssm')
     response = ssm_client.create_ops_item(
         Description=description,
-        # OpsItemType='/aws/issue',
         Priority=priority,
         Source='AHA-Custom',
         Title=title,
@@ -80,32 +103,16 @@ def create_ops_item(description, priority, severity, title, arn, account):
                 'Value': arn,
                 'Type': 'SearchableString'
             },
+            'HashedArn': {
+                'Value': hashlib.sha256(arn.encode()).hexdigest(),
+                'Type': 'SearchableString'
+            },
             'Account': {
                 'Value': account,
                 'Type': 'SearchableString'
             }
         },
-
-        # Tags=[
-        #     {
-        #         'Key': 'CreatedBy',
-        #         'Value': 'AHA-Custom'
-        #     },
-        #     {
-        #         'Key': 'Arn',
-        #         'Value': arn
-        #     },
-        #     {
-        #         'Key': 'Account',
-        #         'Value': account
-        #     },
-        # ],
-        # Category='string',
         Severity=str(severity),
-        # ActualStartTime=datetime(2015, 1, 1),
-        # ActualEndTime=datetime(2015, 1, 1),
-        # PlannedStartTime=datetime(2015, 1, 1),
-        # PlannedEndTime=datetime(2015, 1, 1)
     )
     logger.info(response)
     return response.get('OpsItemId')
@@ -769,6 +776,11 @@ def lambda_handler(event, context):
                     continue
                 else:
                     logger.info("Filter Not Matched")
+
+                    # Update OpsItem
+                    ops_item_id = get_ops_item_id(arn, _AccountID)
+                    print(ops_item_id)
+
                     logger.info(_SlackWebHookURL)
                     # Send Slack Message
                     if _SlackWebHookURL != "":
@@ -819,6 +831,10 @@ def lambda_handler(event, context):
                     "!!!")
             else:
                 logger.info("Filter Not Matched")
+                # Update OpsItem
+                ops_item_id = get_ops_item_id(arn, _AccountID)
+                print(ops_item_id)
+
                 logger.info(_SlackWebHookURL)
                 # Send Slack Message
                 if _SlackWebHookURL != "":
