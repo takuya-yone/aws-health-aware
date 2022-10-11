@@ -48,7 +48,8 @@ def get_translated_text(text):
     )
     return response.get('TranslatedText')
 
-def create_ops_item(description,priority,severity,title):
+
+def create_ops_item(description, priority, severity, title):
     ssm_client = boto3.client('ssm')
     response = ssm_client.create_ops_item(
         Description=description,
@@ -299,6 +300,7 @@ def generate_modify_slack_message(
     }
     return message
 
+
 def generate_insert_email_message(
         affectedAccountIDs,
         affectedOrgEntities,
@@ -339,6 +341,7 @@ def generate_insert_email_message(
     </html>
 """
     return BODY_HTML
+
 
 def generate_modify_email_message(
         affectedAccountIDs,
@@ -395,9 +398,8 @@ def lambda_handler(event, context):
     email_message = ''
     accounts = get_organizations_accounts()
 
-
     if eventName == 'INSERT':
-   
+
         new_event_record = event['Records'][0]['dynamodb']['NewImage']
 
         arn = new_event_record['arn']['S']
@@ -425,7 +427,6 @@ def lambda_handler(event, context):
             _translated_text = get_translated_text(text)
             _event_latestDescription_ja_list.append(_translated_text)
         latestDescription_ja = '\n\n'.join(_event_latestDescription_ja_list)
-
 
         new_event_record['latestDescription']['S'] = ''
         new_event_record_line = to_string_lines(new_event_record)
@@ -507,7 +508,7 @@ def lambda_handler(event, context):
 
                     # Create OpsItem
                     _title = f"{service.upper()} service in the {region.upper()} region"
-                    create_ops_item(latestDescription_ja,4,3,_title)
+                    create_ops_item(latestDescription_ja, 4, 3, _title)
 
                     # Send Slack Message
                     logger.info(_SlackWebHookURL)
@@ -562,7 +563,7 @@ def lambda_handler(event, context):
 
                 # Create OpsItem
                 _title = f"{service.upper()} service in the {region.upper()} region"
-                create_ops_item(latestDescription_ja,4,3,_title)
+                create_ops_item(latestDescription_ja, 4, 3, _title)
 
                 # Send Slack Message
                 logger.info(_SlackWebHookURL)
