@@ -173,3 +173,25 @@ Resources:
       LogGroupName:
         Fn::Sub: /aws/lambda/${DynamoTriggerFunction}
       RetentionInDays: 365
+  SandboxFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role:
+        Fn::GetAtt:
+        - DynamoTriggerLambdaRole
+        - Arn
+      CodeUri: SandboxFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+      - Fn::Sub: arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+      - x86_64
+    Metadata:
+      SamResourceId: SandboxFunction
+  SandboxFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${SandboxFunction}
+      RetentionInDays: 365
