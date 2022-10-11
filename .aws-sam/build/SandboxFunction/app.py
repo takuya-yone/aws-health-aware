@@ -12,15 +12,6 @@ tracer = Tracer()
 logger = Logger()
 
 
-import json
-import boto3
-import os
-import hashlib
-
-
-from aws_lambda_powertools import Logger
-from aws_lambda_powertools import Tracer
-
 region_name = os.environ['AWS_REGION']
 tracer = Tracer()
 logger = Logger()
@@ -41,7 +32,7 @@ def get_ops_item(arn):
             {
                 'Key': 'Status',
                 'Values': [
-                    'Open','InProgress'
+                    'Open', 'InProgress'
                 ],
                 'Operator': 'Equal'
             }
@@ -57,7 +48,6 @@ def get_ops_item(arn):
 def lambda_handler(event, context):
     # logger.info(json.dumps(event))
     get_ops_item()
-
 
 
 @tracer.capture_lambda_handler

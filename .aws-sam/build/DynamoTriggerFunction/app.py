@@ -51,10 +51,10 @@ def get_translated_text(text):
     return response.get('TranslatedText')
 
 
-def get_ops_item_id(arn,account_id):
+def get_ops_item_id(arn, account_id):
     ssm_client = boto3.client('ssm')
     _HashedArn = hashlib.sha256(arn.encode()).hexdigest()
-    print(arn,_HashedArn)
+    print(arn, _HashedArn)
     response = ssm_client.describe_ops_items(
         OpsItemFilters=[
             {
@@ -67,7 +67,7 @@ def get_ops_item_id(arn,account_id):
             {
                 'Key': 'Status',
                 'Values': [
-                    'Open','InProgress'
+                    'Open', 'InProgress'
                 ],
                 'Operator': 'Equal'
             }
@@ -75,15 +75,19 @@ def get_ops_item_id(arn,account_id):
     )
     logger.info(response)
     OpsItemSummaries = response.get('OpsItemSummaries')
-    OpsItemId = [x for x in OpsItemSummaries if x['OperationalData']['Account']['Value'] == str(account_id)][0]['OpsItemId']
+    OpsItemId = [x for x in OpsItemSummaries if x['OperationalData']
+                 ['Account']['Value'] == str(account_id)][0]['OpsItemId']
     return OpsItemId
 
 
-def update_ops_item():
+def update_ops_item(ops_item_id,description):
     ssm_client = boto3.client('ssm')
-    response = ssm_client.create_ops_item(
+    response = ssm_client.update_ops_item(
+        OpsItemId=ops_item_id,
+        Description=description
     )
-    return None
+    logger.info(response)
+    return response
 
 
 def create_ops_item(description, priority, severity, title, arn, account):
@@ -777,8 +781,8 @@ def lambda_handler(event, context):
                     logger.info("Filter Not Matched")
 
                     # Update OpsItem
-                    ops_item_id = get_ops_item_id(arn,_AccountID)
-                    print(ops_item_id)
+                    ops_item_id = get_ops_item_id(arn, _AccountID)
+                    update_ops_item(ops_item_id,latestDescription_ja)
 
                     logger.info(_SlackWebHookURL)
                     # Send Slack Message
@@ -831,9 +835,10 @@ def lambda_handler(event, context):
             else:
                 logger.info("Filter Not Matched")
                 # Update OpsItem
-                ops_item_id = get_ops_item_id(arn,_AccountID)
+                ops_item_id = get_ops_item_id(arn, _AccountID)
+                update_ops_item(ops_item_id,latestDescription_ja)
                 print(ops_item_id)
-                
+
                 logger.info(_SlackWebHookURL)
                 # Send Slack Message
                 if _SlackWebHookURL != "":
