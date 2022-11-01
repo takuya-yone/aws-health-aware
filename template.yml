@@ -132,6 +132,11 @@ Resources:
                   - "events:PutEvents"
                 Resource: 
                   - !Sub "arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/health-bus"
+              - Effect: "Allow"
+                Action: 
+                  - "sqs:*"
+                Resource:
+                  - !GetAtt DynamoStreamQueue.Arn
 
   AccountConfigTable:
     Type: AWS::DynamoDB::Table
@@ -144,6 +149,113 @@ Resources:
         - AttributeName: AccountID
           KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+
+  DynamoStreamQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "AHA-Custom-DynamoStream-Queue"
+      VisibilityTimeout: 60
+
+  DynamoStreamQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: "AllowSQS"
+        Statement:
+          - Sid: AllowSQS
+            Effect: Allow
+            # Principal: !GetAtt DynamoTriggerLambdaRole.Arn
+            Principal: "*"
+            Action: "sqs:*"
+            Resource: !GetAtt DynamoStreamQueue.Arn
+      # ポリシー追加先のキューURL
+      Queues:
+        - !Ref DynamoStreamQueue
+
+  # QueuePolycy:
+  #   Type: AWS::SQS::QueuePolicy
+  #   Properties:
+  #     PolicyDocument:
+  #       Version: 2012-10-17
+  #       Id: AllowSnsTopicToSendMessage
+  #       Statement:
+  #         - Sid: 1
+  #           Effect: Allow
+  #           Principal: "*"
+  #           Action:
+  #             - sqs:SendMessage
+  #           Resource: "*"
+  #           Condition:
+  #             ArnEquals:
+  #               aws:SourceArn:
+  #                 !ImportValue SystemASnsTopicArn
+
+  DynamoStreamSendQueueFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Role: !GetAtt DynamoTriggerLambdaRole.Arn
+      CodeUri: DynamoStreamSendQueue/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          QUEUE_NAME: !GetAtt DynamoStreamQueue.QueueName
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !Ref AHADynamoTableStreamArn
+            BatchSize: 1
+            MaximumRetryAttempts: 0
+            StartingPosition: LATEST
+
+  DynamoStreamSendQueueFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DynamoStreamSendQueueFunction}
+      RetentionInDays: 365
+
+
+  DynamoStreamRecieveQueueFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      Role: !GetAtt DynamoTriggerLambdaRole.Arn
+      CodeUri: DynamoStreamRecieveQueue/
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          QUEUE_NAME: !GetAtt DynamoStreamQueue.QueueName
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream: !Ref AHADynamoTableStreamArn
+            BatchSize: 1
+            MaximumRetryAttempts: 0
+            StartingPosition: LATEST
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt DynamoStreamQueue.Arn
+            BatchSize: 1
+
+
+  DynamoStreamRecieveQueueFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${DynamoStreamRecieveQueueFunction}
+      RetentionInDays: 365
 
   DynamoTriggerFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction

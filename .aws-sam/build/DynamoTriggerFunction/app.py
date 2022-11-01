@@ -80,7 +80,7 @@ def get_ops_item_id(arn, account_id):
     return OpsItemId
 
 
-def update_ops_item(ops_item_id,description):
+def update_ops_item(ops_item_id, description):
     ssm_client = boto3.client('ssm')
     response = ssm_client.update_ops_item(
         OpsItemId=ops_item_id,
@@ -782,7 +782,7 @@ def lambda_handler(event, context):
 
                     # Update OpsItem
                     ops_item_id = get_ops_item_id(arn, _AccountID)
-                    update_ops_item(ops_item_id,latestDescription_ja)
+                    update_ops_item(ops_item_id, latestDescription_ja)
 
                     logger.info(_SlackWebHookURL)
                     # Send Slack Message
@@ -836,7 +836,7 @@ def lambda_handler(event, context):
                 logger.info("Filter Not Matched")
                 # Update OpsItem
                 ops_item_id = get_ops_item_id(arn, _AccountID)
-                update_ops_item(ops_item_id,latestDescription_ja)
+                update_ops_item(ops_item_id, latestDescription_ja)
                 print(ops_item_id)
 
                 logger.info(_SlackWebHookURL)

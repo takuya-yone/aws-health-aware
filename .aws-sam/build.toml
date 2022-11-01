@@ -19,4 +19,22 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["SandboxFunction"]
 
+[function_build_definitions.0ca80ebf-dca3-4b56-91a3-562b59d74b5e]
+codeuri = "/Users/takuya-yn/AWS/aws-health-aware/DynamoStreamSendQueue"
+runtime = "python3.9"
+architecture = "x86_64"
+handler = "app.lambda_handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["DynamoStreamSendQueueFunction"]
+
+[function_build_definitions.83912948-f8d0-4713-9976-a26f837c9f06]
+codeuri = "/Users/takuya-yn/AWS/aws-health-aware/DynamoStreamRecieveQueue"
+runtime = "python3.9"
+architecture = "x86_64"
+handler = "app.lambda_handler"
+manifest_hash = ""
+packagetype = "Zip"
+functions = ["DynamoStreamRecieveQueueFunction"]
+
 [layer_build_definitions]

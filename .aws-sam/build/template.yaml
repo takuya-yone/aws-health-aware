@@ -127,6 +127,13 @@ Resources:
             - events:PutEvents
             Resource:
             - Fn::Sub: arn:aws:events:${AWS::Region}:${AWS::AccountId}:event-bus/health-bus
+          - Effect: Allow
+            Action:
+            - sqs:*
+            Resource:
+            - Fn::GetAtt:
+              - DynamoStreamQueue
+              - Arn
   AccountConfigTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -138,6 +145,102 @@ Resources:
       - AttributeName: AccountID
         KeyType: HASH
       BillingMode: PAY_PER_REQUEST
+  DynamoStreamQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: AHA-Custom-DynamoStream-Queue
+      VisibilityTimeout: 60
+  DynamoStreamQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: AllowSQS
+        Statement:
+        - Sid: AllowSQS
+          Effect: Allow
+          Principal: '*'
+          Action: sqs:*
+          Resource:
+            Fn::GetAtt:
+            - DynamoStreamQueue
+            - Arn
+      Queues:
+      - Ref: DynamoStreamQueue
+  DynamoStreamSendQueueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role:
+        Fn::GetAtt:
+        - DynamoTriggerLambdaRole
+        - Arn
+      CodeUri: DynamoStreamSendQueueFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+      - Fn::Sub: arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+      - x86_64
+      Environment:
+        Variables:
+          QUEUE_NAME:
+            Fn::GetAtt:
+            - DynamoStreamQueue
+            - QueueName
+      Events:
+        Stream:
+          Type: DynamoDB
+          Properties:
+            Stream:
+              Ref: AHADynamoTableStreamArn
+            BatchSize: 1
+            MaximumRetryAttempts: 0
+            StartingPosition: LATEST
+    Metadata:
+      SamResourceId: DynamoStreamSendQueueFunction
+  DynamoStreamSendQueueFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DynamoStreamSendQueueFunction}
+      RetentionInDays: 365
+  DynamoStreamRecieveQueueFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Role:
+        Fn::GetAtt:
+        - DynamoTriggerLambdaRole
+        - Arn
+      CodeUri: DynamoStreamRecieveQueueFunction
+      Handler: app.lambda_handler
+      Runtime: python3.9
+      Layers:
+      - Fn::Sub: arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:33
+      Architectures:
+      - x86_64
+      Environment:
+        Variables:
+          QUEUE_NAME:
+            Fn::GetAtt:
+            - DynamoStreamQueue
+            - QueueName
+      Events:
+        MySQSEvent:
+          Type: SQS
+          Properties:
+            Queue:
+              Fn::GetAtt:
+              - DynamoStreamQueue
+              - Arn
+            BatchSize: 1
+    Metadata:
+      SamResourceId: DynamoStreamRecieveQueueFunction
+  DynamoStreamRecieveQueueFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${DynamoStreamRecieveQueueFunction}
+      RetentionInDays: 365
   DynamoTriggerFunction:
     Type: AWS::Serverless::Function
     Properties:
