@@ -289,6 +289,32 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${DynamoTriggerFunction}
       RetentionInDays: 365
 
+  # LogsMetricFilter:
+  #   Type: "AWS::Logs::MetricFilter"
+  #   Properties:
+  #     FilterPattern: "ERROR"
+  #     LogGroupName: !Ref DynamoTriggerFunctionLogGroup
+  #     MetricTransformations: 
+  #       - MetricName: "Error-Count1"
+  #         MetricNamespace: "AHA-CustomLambda-Error1"
+  #         MetricValue: "1"
+
+  # CloudWatchAlarm:
+  #   Type: "AWS::CloudWatch::Alarm"
+  #   Properties:
+  #     AlarmName: "AHA-Custom-Error1"
+  #     ActionsEnabled: true
+  #     # AlarmActions: 
+  #     # - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:slack-notify-rd-itsm-error"
+  #     MetricName: "Error-Count"
+  #     Namespace: "AHA-CustomLambda-Error1"
+  #     Statistic: "SampleCount"
+  #     Period: 60
+  #     EvaluationPeriods: 1
+  #     DatapointsToAlarm: 1
+  #     Threshold: 0
+  #     ComparisonOperator: "GreaterThanThreshold"
+  #     TreatMissingData: "missing"
 
   SandboxFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
